@@ -1,6 +1,6 @@
 # Blink Pairs (blink.pairs)
 
-Rainbow highlighting and auto-pairs for Neovim. Uses a custom parser internally which takes ~2ms to parse a 400k character file, and ~0.15ms for incremental updates. It uses indent-aware matching of delimiters and highlights mismatched pairs. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
+Rainbow highlighting, auto-pairs and wrapping for Neovim. Uses a custom parser internally which takes ~2ms to parse a 400k character file, and ~0.15ms for incremental updates. It uses indent-aware matching of delimiters and highlights mismatched pairs. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
 
 ## Behavior
 
@@ -25,6 +25,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 | `'\|'`     | `<BS>`    | `\|`       |
 | `( \| )`   | `<BS>`    | `(\|)`     |
 | `(\|)`     | `<Space>` | `( \| )`   |
+| `foo(\|)'bar'`     | `<C-t>aq` | `foo('bar'\|)`   |
 
 ## Installation
 
@@ -54,18 +55,15 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
       -- and/or with `vim.g.blink_pairs = false` and `vim.b.blink_pairs = false`
       disabled_filetypes = {},
       -- see the defaults:
-      -- https://github.com/Saghen/blink.pairs/blob/main/lua/blink/pairs/config/mappings.lua#L14
+      -- https://github.com/Saghen/blink.pairs/blob/main/lua/blink/pairs/config/mappings.lua#L33
+      wrap = {}
       pairs = {},
     },
     highlights = {
       enabled = true,
       -- requires require('vim._extui').enable({}), otherwise has no effect
       cmdline = true,
-      groups = {
-        'BlinkPairsOrange',
-        'BlinkPairsPurple',
-        'BlinkPairsBlue',
-      },
+      groups = { 'BlinkPairsOrange', 'BlinkPairsPurple', 'BlinkPairsBlue' },
       unmatched_group = 'BlinkPairsUnmatched',
 
       -- highlights matching pairs under the cursor
