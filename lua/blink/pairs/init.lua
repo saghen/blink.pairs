@@ -12,7 +12,7 @@ function pairs.setup(user_config)
     if err then error(err) end
 
     if config.mappings.enabled then
-      require('blink.pairs.mappings').register(config.mappings.pairs, config.mappings.cmdline)
+      require('blink.pairs.mappings').enable()
     end
     if config.highlights.enabled then require('blink.pairs.highlight').register(config.highlights) end
   end)

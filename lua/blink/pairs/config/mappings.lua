@@ -2,9 +2,12 @@
 --- @field enabled boolean
 --- @field cmdline boolean
 --- @field disabled_filetypes string[]
+--- @field wrap blink.pairs.WrapDefinitions
 --- @field pairs blink.pairs.RuleDefinitions
 
 --- @alias blink.pairs.RuleDefinitions table<string, string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]>
+
+--- @alias blink.pairs.WrapDefinitions table<'in_pair' | string, string> Definitions for wrapping pairs: key -> pair_to_insert
 
 --- @class (exact) blink.pairs.RuleDefinition
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})
@@ -27,6 +30,14 @@ local mappings = {
     enabled = true,
     cmdline = true,
     disabled_filetypes = {},
+    wrap = {
+      ['<C-t>'] = 'in_pair',
+      -- example mappings to insert parens and immediately enter wrap mode:
+      -- ['<M-9>'] = '()',
+      -- ['<M-[>'] = '[]',
+      -- ['<M-]>'] = '{}',
+      -- ['<M-,>'] = '<>',
+    },
     pairs = {
       ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown', 'markdown_inline' } } },
       ['('] = ')',
@@ -125,6 +136,7 @@ function mappings.validate(config)
     enabled = { config.enabled, 'boolean' },
     cmdline = { config.cmdline, 'boolean' },
     disabled_filetypes = { config.disabled_filetypes, 'table' },
+    wrap = { config.wrap, 'table' },
     pairs = { config.pairs, 'table' },
   }, config)
 
