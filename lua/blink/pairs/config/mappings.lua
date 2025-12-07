@@ -60,6 +60,7 @@ local mappings = {
             -- this pair in math environments. Thus, disable this pair completely.
             -- TODO: disable inside "" strings?
             return ctx.ft ~= 'plaintext'
+              and ctx.ft ~= 'scheme'
               and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'"))
               and ctx.ts:blacklist('singlequote').matches
           end,

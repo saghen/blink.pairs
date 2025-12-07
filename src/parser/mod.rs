@@ -18,7 +18,7 @@ const FILETYPES: &[&str] = &[
     "c", "clojure", "cpp", "csharp", "dart", "elixir", "erlang", "fsharp", "go", "haskell",
     "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json",
     "kotlin", "latex", "tex", "bib", "lean", "lua", "markdown", "nix", "objc", "ocaml", "perl",
-    "php", "python", "r", "ruby", "rust", "scala", "shell", "sql", "swift", "toml", "typst", "vim",
+    "php", "python", "r", "ruby", "rust", "scala", "scheme", "shell", "sql", "swift", "toml", "typst", "vim",
     "zig"
 ];
 
@@ -64,6 +64,7 @@ pub fn parse_filetype(
         "ruby" => Some(parse(tab_width, lines, initial_state, languages::Ruby {})),
         "rust" => Some(parse(tab_width, lines, initial_state, languages::Rust {})),
         "scala" => Some(parse(tab_width, lines, initial_state, languages::Scala {})),
+        "scheme" => Some(parse(tab_width, lines, initial_state, languages::Scheme {})),
         "shell" => Some(parse(tab_width, lines, initial_state, languages::Shell {})),
         "sql" => Some(parse(tab_width, lines, initial_state, languages::Sql {})),
         "swift" => Some(parse(tab_width, lines, initial_state, languages::Swift {})),
