@@ -10,9 +10,9 @@ _G.blink_pairs_wrap = function()
 
   -- special case for end of line so that pressing `e` moves the paren to the end of the line
   if
-    new_pos[1] == start_pos[1] and
-    new_pos[2] == start_pos[2] - 1 and
-    start_pos[2] + 1 == #vim.api.nvim_buf_get_lines(0, start_pos[1] - 1, start_pos[1], true)[1]
+    new_pos[1] == start_pos[1]
+    and new_pos[2] == start_pos[2] - 1
+    and start_pos[2] + 1 == #vim.api.nvim_buf_get_lines(0, start_pos[1] - 1, start_pos[1], true)[1]
   then
     new_pos[2] = new_pos[2] + 1
   end
@@ -20,7 +20,6 @@ _G.blink_pairs_wrap = function()
   local paren = vim.api.nvim_buf_get_text(0, start_pos[1] - 1, start_pos[2] - 1, start_pos[1] - 1, start_pos[2], {})
   vim.api.nvim_buf_set_text(0, new_pos[1] - 1, new_pos[2] + 1, new_pos[1] - 1, new_pos[2] + 1, { paren[1] })
   vim.api.nvim_buf_set_text(0, start_pos[1] - 1, start_pos[2] - 1, start_pos[1] - 1, start_pos[2], { '' })
-  vim.api.nvim_win_set_cursor(0, new_pos)
 end
 
 --- @param definitions blink.pairs.WrapDefinitions
