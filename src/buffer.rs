@@ -24,7 +24,7 @@ impl ParsedBuffer {
         lines: &[&str],
         start_line: Option<usize>,
         old_end_line: Option<usize>,
-        new_end_line: Option<usize>,
+        _new_end_line: Option<usize>,
     ) -> bool {
         let max_line = self.matches_by_line.len();
         let start_line = start_line.unwrap_or(0).min(max_line);
@@ -40,20 +40,21 @@ impl ParsedBuffer {
         };
 
         if let Some(new) = parse_filetype(filetype, tab_width, lines, initial_state) {
-            let new_end_line = new_end_line.unwrap_or(start_line + new.matches_by_line.len());
-            let length = new_end_line - start_line;
+            // Use lines.len() as authoritative length to avoid index mismatch
+            // when start_line is clamped by max_line
+            let length = lines.len();
 
             self.matches_by_line.splice(
                 start_line..old_end_line,
-                new.matches_by_line[0..length].to_vec(),
+                new.matches_by_line.into_iter().take(length),
             );
             self.state_by_line.splice(
                 start_line..old_end_line,
-                new.state_by_line[0..length].to_vec(),
+                new.state_by_line.into_iter().take(length),
             );
             self.indent_levels.splice(
                 start_line..old_end_line.min(self.indent_levels.len()),
-                new.indent_levels[0..length].to_vec(),
+                new.indent_levels.into_iter().take(length),
             );
 
             self.calculate_stack_heights(tab_width);
