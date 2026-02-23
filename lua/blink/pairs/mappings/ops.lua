@@ -1,11 +1,12 @@
+local mappings = require('blink.pairs.mappings')
 local utils = require('blink.pairs.utils')
 local rule_lib = require('blink.pairs.rule')
 
-local mappings = {}
+local ops = {}
 
 --- @param rule_definitions blink.pairs.RuleDefinitions
 --- @param cmdline boolean
-function mappings.register(rule_definitions, cmdline)
+function ops.register(rule_definitions, cmdline)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
   local map = function(lhs, rhs)
@@ -14,18 +15,18 @@ function mappings.register(rule_definitions, cmdline)
   end
 
   for key, rules in pairs(rules_by_key) do
-    if #rules > 0 then map(key, mappings.on_key(key, rules)) end
+    if #rules > 0 then map(key, ops.on_key(key, rules)) end
   end
 
   local all_rules = rule_lib.get_all(rules_by_key)
-  map('<BS>', mappings.backspace(all_rules))
-  map('<CR>', mappings.enter(all_rules))
-  map('<Space>', mappings.space(all_rules))
+  map('<BS>', ops.backspace(all_rules))
+  map('<CR>', ops.enter(all_rules))
+  map('<Space>', ops.space(all_rules))
 end
 
 --- @param rule_definitions blink.pairs.RuleDefinitions
 --- @param cmdline boolean
-function mappings.unregister(rule_definitions, cmdline)
+function ops.unregister(rule_definitions, cmdline)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
   local unmap = function(lhs)
@@ -42,28 +43,9 @@ function mappings.unregister(rule_definitions, cmdline)
   unmap('<Space>')
 end
 
-function mappings.enable()
-  local config = require('blink.pairs.config')
-  mappings.register(config.mappings.pairs, config.mappings.cmdline)
-end
-
-function mappings.disable()
-  local config = require('blink.pairs.config')
-  mappings.unregister(config.mappings.pairs, config.mappings.cmdline)
-end
-
-function mappings.is_enabled()
-  return vim.g.pairs ~= false
-    and vim.b.pairs ~= false
-    and vim.g.blink_pairs ~= false
-    and vim.b.blink_pairs ~= false
-    and vim.api.nvim_get_mode().mode:find('R') == nil
-    and not vim.tbl_contains(require('blink.pairs.config').mappings.disabled_filetypes, vim.bo.filetype)
-end
-
 --- @param key string
 --- @param rules blink.pairs.Rule[]
-function mappings.on_key(key, rules)
+function ops.on_key(key, rules)
   return function()
     if not mappings.is_enabled() then return key end
 
@@ -73,11 +55,11 @@ function mappings.on_key(key, rules)
     for _, rule in ipairs(active_rules) do
       -- TODO: set lazyredraw to prevent flickering
 
-      if rule.opening == rule.closing then return mappings.open_or_close_pair(ctx, key, rule) end
+      if rule.opening == rule.closing then return ops.open_or_close_pair(ctx, key, rule) end
 
       if #rule.opening == 1 then
-        if rule.opening == key then return mappings.open_pair(ctx, key, rule) end
-        return mappings.close_pair(ctx, key, rule)
+        if rule.opening == key then return ops.open_pair(ctx, key, rule) end
+        return ops.close_pair(ctx, key, rule)
       end
 
       -- Multiple characters
@@ -91,11 +73,11 @@ function mappings.on_key(key, rules)
       -- I.e. user types '"' for line 'r#|', we expand to 'r#""#'
       -- or the pair is "'''", in which case the index_of_key is 0 because there's no relevant prefix
       if index_of_key == 0 or ctx:is_before_cursor(opening_prefix) then
-        return mappings.open_pair(ctx, key, rule, index_of_key + 1)
+        return ops.open_pair(ctx, key, rule, index_of_key + 1)
       end
 
       --- I.e. for line 'r#"', user types '"' to close the pair
-      if ctx:is_before_cursor(rule.opening) then return mappings.close_pair(ctx, key, rule) end
+      if ctx:is_before_cursor(rule.opening) then return ops.close_pair(ctx, key, rule) end
     end
 
     -- No applicable rule found
@@ -105,7 +87,7 @@ end
 
 --- @param amount number
 --- @return string keycodes Characters to feed to neovim to move the cursor forward or backward
-function mappings.shift_keycode(amount)
+function ops.shift_keycode(amount)
   local undo = vim.api.nvim_get_mode().mode ~= 'c' and '<C-g>u' or ''
   if amount > 0 then return string.rep(undo .. '<Right>', amount) end
   return string.rep(undo .. '<Left>', -amount)
@@ -115,7 +97,7 @@ end
 --- @param key string
 --- @param rule blink.pairs.Rule
 --- @param offset? number
-function mappings.open_pair(ctx, key, rule, offset)
+function ops.open_pair(ctx, key, rule, offset)
   if not rule.open(ctx) then return key end
 
   -- \| -> \(|
@@ -130,13 +112,13 @@ function mappings.open_pair(ctx, key, rule, offset)
   end
 
   -- | -> (|)
-  return rule.opening:sub(offset or 0) .. rule.closing .. mappings.shift_keycode(-#rule.closing)
+  return rule.opening:sub(offset or 0) .. rule.closing .. ops.shift_keycode(-#rule.closing)
 end
 
 --- @param ctx blink.pairs.Context
 --- @param key string
 --- @param rule blink.pairs.Rule
-function mappings.close_pair(ctx, key, rule)
+function ops.close_pair(ctx, key, rule)
   if not rule.close(ctx) then return key end
 
   -- ( ( |) -> ( (  )|)
@@ -149,9 +131,9 @@ function mappings.close_pair(ctx, key, rule)
 
   -- TODO: should these use rule.closing.len()
   -- |) -> )|
-  if ctx:text_after_cursor(1) == rule.closing:sub(1, 1) then return mappings.shift_keycode(#rule.closing) end
+  if ctx:text_after_cursor(1) == rule.closing:sub(1, 1) then return ops.shift_keycode(#rule.closing) end
   -- | ) ->  )|
-  if ctx:text_after_cursor(2) == ' ' .. rule.closing then return mappings.shift_keycode(2) end
+  if ctx:text_after_cursor(2) == ' ' .. rule.closing then return ops.shift_keycode(2) end
 
   return rule.closing
 end
@@ -159,7 +141,7 @@ end
 --- @param ctx blink.pairs.Context
 --- @param key string
 --- @param rule blink.pairs.Rule
-function mappings.open_or_close_pair(ctx, key, rule)
+function ops.open_or_close_pair(ctx, key, rule)
   if not rule.open_or_close(ctx) then return key end
 
   -- \| -> \"|
@@ -169,7 +151,7 @@ function mappings.open_or_close_pair(ctx, key, rule)
   assert(pair == rule.closing, 'Opening and closing must be the same')
 
   -- |' -> '|
-  if ctx:is_after_cursor(pair) then return mappings.shift_keycode(#pair) end
+  if ctx:is_after_cursor(pair) then return ops.shift_keycode(#pair) end
 
   -- Multiple character open
   -- '|' -> '''|'''
@@ -179,15 +161,15 @@ function mappings.open_or_close_pair(ctx, key, rule)
     local opening = rule.opening:sub(start_overlap + 1)
     local closing = rule.closing:sub(1, #rule.closing - end_overlap)
 
-    return opening .. closing .. mappings.shift_keycode(-#closing)
+    return opening .. closing .. ops.shift_keycode(-#closing)
   end
 
   -- | -> '|'
-  return pair .. pair .. mappings.shift_keycode(-#pair)
+  return pair .. pair .. ops.shift_keycode(-#pair)
 end
 
 --- @param rules blink.pairs.Rule[]
-function mappings.backspace(rules)
+function ops.backspace(rules)
   return function()
     if not mappings.is_enabled() then return '<BS>' end
 
@@ -200,12 +182,12 @@ function mappings.backspace(rules)
     if surrounding_space then return '<Del><BS>' end
 
     -- (|) -> |
-    return mappings.shift_keycode(#rule.closing) .. string.rep('<BS>', #rule.opening + #rule.closing)
+    return ops.shift_keycode(#rule.closing) .. string.rep('<BS>', #rule.opening + #rule.closing)
   end
 end
 
 --- @param rules blink.pairs.Rule[]
-function mappings.enter(rules)
+function ops.enter(rules)
   return function()
     -- use <C-]> to expand abbreviations
     if not mappings.is_enabled() then return '<C-]><CR>' end
@@ -214,7 +196,7 @@ function mappings.enter(rules)
     local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'enter')
     if rule == nil then return '<C-]><CR>' end
 
-    if surrounding_space then return mappings.shift_keycode(1) .. '<BS><BS>' .. '<CR><C-o>O' end
+    if surrounding_space then return ops.shift_keycode(1) .. '<BS><BS>' .. '<CR><C-o>O' end
 
     -- (|) ->
     -- (
@@ -225,7 +207,7 @@ function mappings.enter(rules)
 end
 
 --- @param rules blink.pairs.Rule[]
-function mappings.space(rules)
+function ops.space(rules)
   return function()
     -- use <C-]> to expand abbreviations
     if not mappings.is_enabled() then return '<C-]><Space>' end
@@ -235,8 +217,8 @@ function mappings.space(rules)
     if rule == nil then return '<C-]><Space>' end
 
     -- "(|)" -> "( | )"
-    return '<Space><Space>' .. mappings.shift_keycode(-1)
+    return '<Space><Space>' .. ops.shift_keycode(-1)
   end
 end
 
-return mappings
+return ops
