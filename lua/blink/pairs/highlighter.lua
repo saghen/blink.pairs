@@ -48,6 +48,9 @@ function highlighter.register(config)
       -- start parsing, skip if unsupported
       if not watcher_attach(bufnr) then return false end
 
+      -- skip colorization if no groups defined, but keep watcher attached for matchparen
+      if type(config.groups) == 'table' and #config.groups == 0 then return false end
+
       -- buffer changed, full redraw
       local tick = nvim_buf_get_changedtick(bufnr)
       if tick ~= buf_ticks[bufnr] then
