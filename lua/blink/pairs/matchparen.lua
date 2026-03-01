@@ -7,6 +7,7 @@ function M.setup(config)
   if not (config.matchparen and config.matchparen.enabled) then return end
 
   local rust = require('blink.pairs.rust')
+  local mappings_config = require('blink.pairs.config').mappings
   local ns = vim.api.nvim_create_namespace('blink_pairs_matchparen')
   local last_buf
 
@@ -17,6 +18,14 @@ function M.setup(config)
   vim.api.nvim_create_autocmd(autocmds, {
     group = vim.api.nvim_create_augroup('BlinkPairsMatchparen', {}),
     callback = function(ev)
+      if
+        vim.b.pairs == false
+        or vim.b.blink_pairs == false
+        or vim.tbl_contains(mappings_config.disabled_filetypes, vim.bo.filetype)
+      then
+        return
+      end
+
       local mode = vim.api.nvim_get_mode().mode
       -- In insert mode, we'll get the CursorMovedI event, so we can ignore CursorMoved
       if

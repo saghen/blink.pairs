@@ -14,6 +14,7 @@ function highlighter.register(config)
 
   local watcher_attach = require('blink.pairs.watcher').attach
   local get_line_matches = require('blink.pairs.rust').get_line_matches
+  local mappings_config = require('blink.pairs.config').mappings
 
   local ns = config.ns
   local cmdline_enabled = config.cmdline
@@ -34,6 +35,14 @@ function highlighter.register(config)
 
   vim.api.nvim_set_decoration_provider(ns, {
     on_win = function(_, winnr, bufnr, toprow, botrow)
+      if
+        vim.b[bufnr].pairs == false
+        or vim.b[bufnr].blink_pairs == false
+        or vim.tbl_contains(mappings_config.disabled_filetypes, vim.bo[bufnr].filetype)
+      then
+        return false
+      end
+
       local is_cmdline = nvim_get_mode().mode:match('c')
       if is_cmdline then
         local is_cmdline_extui_buf = vim.bo[bufnr].filetype == 'cmd'
