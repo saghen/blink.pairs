@@ -7,7 +7,14 @@
 
 --- @alias blink.pairs.RuleDefinitions table<string, string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]>
 
---- @alias blink.pairs.WrapDefinitions table<'in_pair' | string, string> Definitions for wrapping pairs: key -> pair_to_insert
+--- @alias blink.pairs.WrapType 'in_pair' | 'reverse_in_pair' | 'ts_wrap' | 'ts_wrap_rev' | 'normal_in_pair'
+
+--- @class (exact) blink.pairs.WrapOpts
+--- @field type blink.pairs.WrapType | string
+--- @field nocursormove? boolean
+
+--- @alias blink.pairs.WrapValue blink.pairs.WrapType | string | blink.pairs.WrapOpts
+--- @alias blink.pairs.WrapDefinitions table<string, blink.pairs.WrapValue>
 
 --- @class (exact) blink.pairs.RuleDefinition
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})
@@ -32,7 +39,16 @@ local mappings = {
     disabled_filetypes = {},
     wrap = {
       ['<C-t>'] = 'in_pair',
-      -- example mappings to insert parens and immediately enter wrap mode:
+      -- treesitter node cycling: move closing pair to next/prev TS node boundary
+      -- ['<C-l>'] = 'ts_wrap',
+      -- ['<C-h>'] = 'ts_wrap_rev',
+      -- move opening pair backward via motion:
+      -- ['<C-S-t>'] = 'reverse_in_pair',
+      -- normal mode: wrap pair character at cursor via motion:
+      -- ['<leader>w'] = 'normal_in_pair',
+      -- operator wrap that keeps cursor at original position:
+      -- ['<C-S-t>'] = { type = 'in_pair', nocursormove = true },
+      -- insert parens and immediately enter wrap mode:
       -- ['<M-9>'] = '()',
       -- ['<M-[>'] = '[]',
       -- ['<M-]>'] = '{}',
