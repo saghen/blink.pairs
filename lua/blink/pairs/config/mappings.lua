@@ -49,7 +49,7 @@ local mappings = {
         {
           "'''",
           when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
-          languages = { 'python' },
+          languages = { 'python', 'toml' },
         },
         {
           "'",
@@ -76,7 +76,7 @@ local mappings = {
         {
           '"""',
           when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
-          languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala' },
+          languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'toml' },
         },
         { '"', enter = false, space = false },
       },
