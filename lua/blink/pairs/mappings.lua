@@ -106,9 +106,9 @@ end
 --- @param amount number
 --- @return string keycodes Characters to feed to neovim to move the cursor forward or backward
 function mappings.shift_keycode(amount)
-  local undo = vim.api.nvim_get_mode().mode ~= 'c' and '<C-g>u' or ''
-  if amount > 0 then return string.rep(undo .. '<Right>', amount) end
-  return string.rep(undo .. '<Left>', -amount)
+  local non_undo = vim.api.nvim_get_mode().mode ~= 'c' and '<C-g>U' or ''
+  if amount > 0 then return string.rep(non_undo .. '<Right>', amount) end
+  return string.rep(non_undo .. '<Left>', -amount)
 end
 
 --- @param ctx blink.pairs.Context
