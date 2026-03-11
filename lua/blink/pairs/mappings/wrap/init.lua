@@ -5,11 +5,12 @@ local motion = require('blink.pairs.mappings.wrap.motion')
 local wrap = {}
 
 local registrations = {
-  in_pair = function(key, opts) wrap.register_in_pair(key, opts) end,
-  reverse_in_pair = function(key, opts) wrap.register_reverse_in_pair(key, opts) end,
-  ts_wrap = function(key) wrap.register_ts_wrap(key, 'fwd') end,
-  ts_wrap_rev = function(key) wrap.register_ts_wrap(key, 'rev') end,
-  normal_in_pair = function(key) wrap.register_normal_in_pair(key) end,
+  motion = function(key, opts) wrap.register_motion(key, opts) end,
+  motion_reverse = function(key, opts) wrap.register_motion(key, opts, true) end,
+  treesitter = function(key) wrap.register_treesitter(key, 'fwd') end,
+  treesitter_reverse = function(key) wrap.register_treesitter(key, 'rev') end,
+  normal_mode_motion = function(key) wrap.register_normal_mode_motion(key) end,
+  normal_mode_motion_reverse = function(key) wrap.register_normal_mode_motion(key, true) end,
 }
 
 --- Normalize a wrap definition to table form
@@ -23,12 +24,22 @@ end
 --- @param definitions blink.pairs.WrapDefinitions
 function wrap.register(definitions)
   for key, def in pairs(definitions) do
-    local opts = normalize_def(def)
-    local fn = registrations[opts.type]
-    if fn then
-      fn(key, opts)
+    if key == 'normal_mode' then
+      --- @cast def table<string, blink.pairs.WrapTypeNormal>
+      for normal_mode_key, normal_mode_type in pairs(def) do
+        local type = normal_mode_type == 'motion' and 'normal_mode_motion'
+          or normal_mode_type == 'motion_reverse' and 'normal_mode_motion_reverse'
+          or error('unknown type for normal mode wrap: ' .. normal_mode_type)
+        registrations[type](normal_mode_key, { type = type })
+      end
     else
-      wrap.register_pair(key, opts.type)
+      local opts = normalize_def(def)
+      local fn = registrations[opts.type]
+      if fn then
+        fn(key, opts)
+      else
+        wrap.register_pair(key, def.type)
+      end
     end
   end
 end
@@ -36,56 +47,56 @@ end
 --- @param definitions blink.pairs.WrapDefinitions
 function wrap.unregister(definitions)
   for key, def in pairs(definitions) do
-    local opts = normalize_def(def)
-    local mode = opts.type == 'normal_in_pair' and 'n' or 'i'
-    vim.keymap.del(mode, key)
+    if key == 'normal_mode' then
+      --- @cast def table<string, blink.pairs.WrapTypeNormal>
+      for normal_mode_key, _ in pairs(def) do
+        vim.keymap.del('n', normal_mode_key)
+      end
+    else
+      vim.keymap.del('i', key)
+    end
   end
 end
 
 --- @param key string
 --- @param opts? blink.pairs.WrapOpts
-function wrap.register_in_pair(key, opts)
+--- @param reverse? boolean
+function wrap.register_motion(key, opts, reverse)
   vim.keymap.set('i', key, function()
     if not mappings.is_enabled() then return key end
 
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    motion.set_operator_wrap({ cursor[1], cursor[2] + 1 }, opts)
-    return '<C-g>u<Right><C-o>g@'
-  end, { expr = true, desc = 'Wrap closing pair forward via motion' })
-end
-
---- @param key string
---- @param opts? blink.pairs.WrapOpts
-function wrap.register_reverse_in_pair(key, opts)
-  vim.keymap.set('i', key, function()
-    if not mappings.is_enabled() then return key end
-
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    local bufnr = vim.api.nvim_get_current_buf()
-    local pair = rust.get_surrounding_match_pair(bufnr, cursor[1] - 1, cursor[2])
+    -- subtract 1 from column in reverse mode, because at `(|'')`,
+    -- we want to select the `(`, not the `'`
+    local pair = wrap.get_pair_at_cursor(reverse and -1 or nil)
     if not pair or #pair < 2 then return key end
 
-    local open_match = pair[1]
-    local start_pos = { open_match.line + 1, open_match.col + 1 } -- 1-indexed
-    motion.set_operator_wrap_reverse(start_pos, opts)
-
-    vim.api.nvim_win_set_cursor(0, { open_match.line + 1, open_match.col + #open_match[1] })
-
-    return '<C-g>u<C-o>g@'
-  end, { expr = true, desc = 'Wrap opening pair backward via motion' })
+    if reverse then
+      motion.set_operator_wrap({ pair[1].line + 1, pair[1].col + 1 }, opts)
+      return '<C-g>U<C-o>g@'
+    else
+      motion.set_operator_wrap({ pair[2].line + 1, pair[2].col + 1 }, opts)
+      return '<C-g>U<Right><C-o>g@'
+    end
+  end, { expr = true, desc = 'Wrap closing pair ' .. (reverse and 'backward' or 'forward') .. ' via motion' })
 end
 
 --- @param key string
-function wrap.register_normal_in_pair(key)
+--- @param reverse? boolean
+function wrap.register_normal_mode_motion(key, reverse)
   vim.keymap.set('n', key, function()
     if not mappings.is_enabled() then return key end
 
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    local bufnr = vim.api.nvim_get_current_buf()
-    local match = rust.get_match_at(bufnr, cursor[1] - 1, cursor[2])
-    if not match then return key end
+    -- subtract 1 from column in reverse mode, because at `(|'')`,
+    -- we want to select the `(`, not the `'`
+    local pair = wrap.get_pair_at_cursor()
+    if not pair or #pair < 2 then return key end
 
-    motion.set_operator_wrap({ cursor[1], cursor[2] + 1 })
+    if reverse then
+      motion.set_operator_wrap({ pair[1].line + 1, pair[1].col + 1 })
+    else
+      motion.set_operator_wrap({ pair[2].line + 1, pair[2].col + 1 })
+    end
+
     return 'g@'
   end, { expr = true, desc = 'Wrap pair at cursor via motion' })
 end
@@ -99,18 +110,27 @@ function wrap.register_pair(key, pair)
     local cursor = vim.api.nvim_win_get_cursor(0)
     motion.set_operator_wrap({ cursor[1], cursor[2] + #pair })
 
-    return '<C-g>u' .. pair .. '<C-o>g@'
+    return '<C-g>U' .. pair .. '<C-o>g@'
   end, { expr = true, desc = 'Insert ' .. pair .. ' and wrap via motion' })
 end
 
 --- @param key string
 --- @param direction 'fwd' | 'rev'
-function wrap.register_ts_wrap(key, direction)
+function wrap.register_treesitter(key, direction)
   local cmd = "<C-g>u<Cmd>lua require('blink.pairs.mappings.wrap.treesitter').wrap('" .. direction .. "')<CR>"
   vim.keymap.set('i', key, function()
     if not mappings.is_enabled() then return key end
     return cmd
   end, { expr = true, desc = 'TS node cycling wrap ' .. direction })
+end
+
+--- @param col_offset? integer
+--- @return blink.pairs.MatchWithLine[]?
+function wrap.get_pair_at_cursor(col_offset)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local bufnr = vim.api.nvim_get_current_buf()
+  if col_offset then cursor[2] = math.max(cursor[2] + col_offset, 0) end
+  return rust.get_surrounding_match_pair(bufnr, cursor[1] - 1, cursor[2])
 end
 
 return wrap
