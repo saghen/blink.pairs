@@ -7,7 +7,15 @@
 
 --- @alias blink.pairs.RuleDefinitions table<string, string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]>
 
---- @alias blink.pairs.WrapDefinitions table<'in_pair' | string, string> Definitions for wrapping pairs: key -> pair_to_insert
+--- @alias blink.pairs.WrapType 'motion' | 'motion_reverse' | 'treesitter' | 'treesitter_reverse'
+--- @alias blink.pairs.WrapTypeNormal 'motion' | 'motion_reverse'
+
+--- @class (exact) blink.pairs.WrapOpts
+--- @field type blink.pairs.WrapType
+--- @field move_cursor? boolean Defaults to true
+
+--- @alias blink.pairs.WrapValue blink.pairs.WrapType | blink.pairs.WrapOpts
+--- @alias blink.pairs.WrapDefinitions table<string, blink.pairs.WrapValue> | { normal_mode: table<string, blink.pairs.WrapTypeNormal> }
 
 --- @class (exact) blink.pairs.RuleDefinition
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})
@@ -31,12 +39,27 @@ local mappings = {
     cmdline = true,
     disabled_filetypes = {},
     wrap = {
-      ['<C-t>'] = 'in_pair',
-      -- example mappings to insert parens and immediately enter wrap mode:
+      -- move closing pair via motion
+      ['<C-b>'] = 'motion',
+      -- move opening pair via motion
+      ['<C-S-b>'] = 'motion_reverse',
+      -- treesitter node cycling: move closing pair to next/prev TS node boundary
+      -- ['<C-l>'] = 'treesitter',
+      -- ['<C-h>'] = 'treesitter_reverse',
+      -- keep cursor at original position after motion:
+      -- ['<C-S-t>'] = { type = 'motion', cursor_move = false },
+      -- insert parens and immediately enter wrap mode:
       -- ['<M-9>'] = '()',
       -- ['<M-[>'] = '[]',
       -- ['<M-]>'] = '{}',
       -- ['<M-,>'] = '<>',
+
+      normal_mode = {
+        -- move closing pair via motion
+        -- ['<C-b>'] = 'motion',
+        -- move opening pair via motion
+        -- ['<C-S-b>'] = 'motion_reverse',
+      },
     },
     pairs = {
       ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown', 'markdown_inline' } } },
