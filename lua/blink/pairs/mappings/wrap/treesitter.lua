@@ -10,22 +10,22 @@ local rust = require('blink.pairs.rust')
 --- @field target_idx integer
 --- @field changedtick integer
 
-local ts = {
+local treesitter = {
   --- @type blink.pairs.TsWrapState?
   state = nil,
 }
 
 --- TS node cycling: move closing pair to next/prev treesitter node boundary
 --- @param direction 'fwd' | 'rev'
-function ts.wrap(direction)
+function treesitter.wrap(direction)
   if not mappings.is_enabled() then return end
 
   local bufnr = vim.api.nvim_get_current_buf()
   local changedtick = vim.api.nvim_buf_get_changedtick(bufnr)
 
   -- Fast path: continue cycling without Rust parser or treesitter lookups
-  if ts.state and ts.state.bufnr == bufnr and ts.state.changedtick == changedtick then
-    return ts.wrap_move(direction, ts.state)
+  if treesitter.state and treesitter.state.bufnr == bufnr and treesitter.state.changedtick == changedtick then
+    return treesitter.wrap_move(direction, treesitter.state)
   end
 
   -- Slow path: initialize new cycle
@@ -40,7 +40,7 @@ function ts.wrap(direction)
   local close_char = close_match[2] or close_match[1]
   local close_end = close_match.col + #close_char
 
-  local nodes = ts.get_wrap_nodes(bufnr, row, col)
+  local nodes = treesitter.get_wrap_nodes(bufnr, row, col)
   if not nodes then return end
 
   local targets = {}
@@ -55,7 +55,7 @@ function ts.wrap(direction)
 
   if tn == 0 then return end
 
-  ts.state = {
+  treesitter.state = {
     bufnr = bufnr,
     original_close_row = close_match.line,
     original_close_col = close_match.col,
@@ -65,12 +65,12 @@ function ts.wrap(direction)
     changedtick = changedtick,
   }
 
-  ts.wrap_move(direction, ts.state)
+  treesitter.wrap_move(direction, treesitter.state)
 end
 
 --- Get TS nodes from position upward, deduped and sorted by end position
 --- @return { end_row: integer, end_col: integer }[]?
-function ts.get_wrap_nodes(bufnr, row, col)
+function treesitter.get_wrap_nodes(bufnr, row, col)
   local ok, node = pcall(vim.treesitter.get_node, { bufnr = bufnr, pos = { row, col } })
   if not ok or not node then return nil end
 
@@ -98,7 +98,7 @@ end
 
 --- @param direction 'fwd' | 'rev'
 --- @param ts_state blink.pairs.TsWrapState
-function ts.wrap_move(direction, ts_state)
+function treesitter.wrap_move(direction, ts_state)
   local new_idx
   if direction == 'fwd' then
     new_idx = ts_state.target_idx + 1
@@ -141,4 +141,4 @@ function ts.wrap_move(direction, ts_state)
   ts_state.changedtick = vim.api.nvim_buf_get_changedtick(bufnr)
 end
 
-return ts
+return treesitter
