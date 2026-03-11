@@ -11,7 +11,7 @@
 
 --- @class (exact) blink.pairs.WrapOpts
 --- @field type blink.pairs.WrapType | string
---- @field nocursormove? boolean
+--- @field move_cursor? boolean Defaults to true
 
 --- @alias blink.pairs.WrapValue blink.pairs.WrapType | string | blink.pairs.WrapOpts
 --- @alias blink.pairs.WrapDefinitions table<string, blink.pairs.WrapValue>
