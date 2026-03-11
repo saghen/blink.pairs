@@ -74,7 +74,9 @@ function wrap.register_motion(key, opts, reverse)
       motion.set_operator_wrap({ pair[1].line + 1, pair[1].col + 1 }, opts)
       return '<C-g>U<C-o>g@'
     else
-      motion.set_operator_wrap({ pair[2].line + 1, pair[2].col + 1 }, opts)
+      local cursor = vim.api.nvim_win_get_cursor(0)
+      cursor[2] = cursor[2] + 1 -- compensate for the `<Right>` movement
+      motion.set_operator_wrap({ pair[2].line + 1, pair[2].col + 1 }, opts, cursor)
       return '<C-g>U<Right><C-o>g@'
     end
   end, { expr = true, desc = 'Wrap closing pair ' .. (reverse and 'backward' or 'forward') .. ' via motion' })

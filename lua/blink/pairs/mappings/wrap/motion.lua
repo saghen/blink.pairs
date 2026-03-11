@@ -9,8 +9,9 @@ local wrap_opts
 
 --- @param start_pos_ [integer, integer]
 --- @param wrap_opts_? blink.pairs.WrapOpts
-function motions.set_operator_wrap(start_pos_, wrap_opts_)
-  cursor = vim.api.nvim_win_get_cursor(0)
+--- @param cursor_? [integer, integer]
+function motions.set_operator_wrap(start_pos_, wrap_opts_, cursor_)
+  cursor = cursor_ or vim.api.nvim_win_get_cursor(0)
   cursor[2] = cursor[2] - 1
 
   start_pos = start_pos_
