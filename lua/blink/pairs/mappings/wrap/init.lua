@@ -1,44 +1,31 @@
 local mappings = require('blink.pairs.mappings')
-local motion = require('blink.pairs.mappings.wrap.motion')
 
 local wrap = {}
 
 local registrations = {
-  motion = function(key, opts) wrap.register_motion(key, opts) end,
-  motion_reverse = function(key, opts) wrap.register_motion(key, opts) end,
+  motion = function(key, type) wrap.register_motion(key, type) end,
+  motion_reverse = function(key, type) wrap.register_motion(key, type) end,
   treesitter = function(key) wrap.register_treesitter(key, 'fwd') end,
   treesitter_reverse = function(key) wrap.register_treesitter(key, 'rev') end,
-  normal_mode_motion = function(key) wrap.register_normal_mode_motion(key, { type = 'motion' }) end,
-  normal_mode_motion_reverse = function(key) wrap.register_normal_mode_motion(key, { type = 'motion_reverse' }) end,
+  normal_mode_motion = function(key) wrap.register_normal_mode_motion(key, 'motion') end,
+  normal_mode_motion_reverse = function(key) wrap.register_normal_mode_motion(key, 'motion_reverse') end,
 }
-
---- Normalize a wrap definition to table form
---- @param def blink.pairs.WrapValue
---- @return blink.pairs.WrapOpts
-local function normalize_def(def)
-  if type(def) == 'string' then return { type = def } end
-  return def
-end
 
 --- @param definitions blink.pairs.WrapDefinitions
 function wrap.register(definitions)
   for key, def in pairs(definitions) do
     if key == 'normal_mode' then
       --- @cast def table<string, blink.pairs.WrapTypeNormal>
-      for normal_mode_key, normal_mode_type in pairs(def) do
-        local type = normal_mode_type == 'motion' and 'normal_mode_motion'
-          or normal_mode_type == 'motion_reverse' and 'normal_mode_motion_reverse'
-          or error('unknown type for normal mode wrap: ' .. normal_mode_type)
-        registrations[type](normal_mode_key)
+      for normal_mode_key, normal_mode_def in pairs(def) do
+        if normal_mode_def ~= nil and normal_mode_def ~= false and normal_mode_def ~= '' then
+          local type = normal_mode_def == 'motion' and 'normal_mode_motion'
+            or normal_mode_def == 'motion_reverse' and 'normal_mode_motion_reverse'
+            or error('unknown type for normal mode wrap: ' .. normal_mode_def)
+          registrations[type](normal_mode_key)
+        end
       end
-    else
-      local opts = normalize_def(def)
-      local fn = registrations[opts.type]
-      if fn then
-        fn(key, opts)
-      else
-        wrap.register_pair(key, def.type, { type = 'motion' })
-      end
+    elseif def ~= nil and def ~= false and def ~= '' then
+      registrations[def](key, def)
     end
   end
 end
@@ -58,40 +45,28 @@ function wrap.unregister(definitions)
 end
 
 --- @param key string
---- @param opts blink.pairs.WrapOpts
-function wrap.register_motion(key, opts)
+--- @param type blink.pairs.WrapType
+function wrap.register_motion(key, type)
   vim.keymap.set('i', key, function()
     if not mappings.is_enabled() then return key end
-    motion.set_operator_wrap(opts)
+    local motion = require('blink.pairs.mappings.wrap.motion')
+    motion.set_operator_wrap(type)
     return '<C-o>g@'
   end, {
     expr = true,
-    desc = 'Wrap ' .. (opts.type == 'motion_reverse' and 'opening' or 'closing') .. ' pair via motion',
+    desc = 'Wrap ' .. (type == 'motion_reverse' and 'opening' or 'closing') .. ' pair via motion',
   })
 end
 
 --- @param key string
---- @param opts blink.pairs.WrapOpts
-function wrap.register_normal_mode_motion(key, opts)
+--- @param type blink.pairs.WrapType
+function wrap.register_normal_mode_motion(key, type)
   vim.keymap.set('n', key, function()
     if not mappings.is_enabled() then return key end
-    motion.set_operator_wrap(opts)
+    local motion = require('blink.pairs.mappings.wrap.motion')
+    motion.set_operator_wrap(type)
     return 'g@'
   end, { expr = true, desc = 'Wrap pair at cursor via motion' })
-end
-
---- @param key string
---- @param pair string
---- @param opts blink.pairs.WrapOpts
-function wrap.register_pair(key, pair, opts)
-  vim.keymap.set('i', key, function()
-    if not mappings.is_enabled() then return key end
-
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    motion.set_operator_wrap(opts, { cursor[1], cursor[2] + #pair })
-
-    return '<C-g>U' .. pair .. '<C-o>g@'
-  end, { expr = true, desc = 'Insert ' .. pair .. ' and wrap via motion' })
 end
 
 --- @param key string
