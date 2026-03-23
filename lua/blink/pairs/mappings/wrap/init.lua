@@ -72,7 +72,7 @@ end
 --- @param key string
 --- @param direction 'fwd' | 'rev'
 function wrap.register_treesitter(key, direction)
-  local cmd = "<C-g>u<Cmd>lua require('blink.pairs.mappings.wrap.treesitter').wrap('" .. direction .. "')<CR>"
+  local cmd = "<C-g>U<Cmd>lua require('blink.pairs.mappings.wrap.treesitter').wrap('" .. direction .. "')<CR>"
   vim.keymap.set('i', key, function()
     if not mappings.is_enabled() then return key end
     return cmd
