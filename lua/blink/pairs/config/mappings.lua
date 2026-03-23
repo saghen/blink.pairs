@@ -42,15 +42,9 @@ local mappings = {
       -- treesitter node cycling: move closing pair to next/prev TS node boundary
       -- ['<C-l>'] = 'treesitter',
       -- ['<C-h>'] = 'treesitter_reverse',
-      -- keep cursor at original position after motion:
-      -- ['<C-S-t>'] = { type = 'motion', cursor_move = false },
-      -- insert parens and immediately enter wrap mode:
-      -- ['<M-9>'] = '()',
-      -- ['<M-[>'] = '[]',
-      -- ['<M-]>'] = '{}',
-      -- ['<M-,>'] = '<>',
 
       normal_mode = {
+        -- move closing pair via motion
         -- ['<C-b>'] = 'motion',
         -- move opening pair via motion
         -- ['<C-S-b>'] = 'motion_reverse',
