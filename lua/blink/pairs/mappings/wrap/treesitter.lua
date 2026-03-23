@@ -136,6 +136,7 @@ function treesitter.wrap_move(direction, ts_state)
   if tgt_row == cur_row and tgt_col > cur_col then tgt_col = tgt_col - #cc end
 
   vim.api.nvim_buf_set_text(bufnr, tgt_row, tgt_col, tgt_row, tgt_col, { cc })
+  vim.api.nvim_win_set_cursor(0, { tgt_row + 1, tgt_col })
 
   ts_state.target_idx = new_idx
   ts_state.changedtick = vim.api.nvim_buf_get_changedtick(bufnr)
