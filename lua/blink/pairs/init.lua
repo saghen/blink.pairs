@@ -5,16 +5,19 @@ local pairs = {}
 
 --- @param user_config blink.pairs.Config
 function pairs.setup(user_config)
+  if vim.fn.has('nvim-0.11') == 0 then error('blink.pairs requires at least nvim 0.11') end
+
   local config = require('blink.pairs.config')
   config.merge_with(user_config)
 
   pairs.download_if_available(function(err)
     if err then error(err) end
 
-    if config.mappings.enabled then
-      require('blink.pairs.mappings').enable()
-    end
-    if config.highlights.enabled then require('blink.pairs.highlighter').register(config.highlights) end
+    local _, err = pcall(function()
+      if config.mappings.enabled then require('blink.pairs.mappings').enable() end
+      if config.highlights.enabled then require('blink.pairs.highlighter').register(config.highlights) end
+    end)
+    if err then vim.print('Failed to setup blink.pairs: ' .. err) end
   end)
 end
 
