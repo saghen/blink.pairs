@@ -7,14 +7,10 @@
 
 --- @alias blink.pairs.RuleDefinitions table<string, string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]>
 
---- @alias blink.pairs.WrapType 'motion' | 'motion_reverse' | 'treesitter' | 'treesitter_reverse'
+--- @alias blink.pairs.WrapType 'motion' | 'motion_reverse' | 'treesitter' | 'treesitter_reverse' | '' | boolean | nil
 --- @alias blink.pairs.WrapTypeNormal 'motion' | 'motion_reverse'
 
---- @class (exact) blink.pairs.WrapOpts
---- @field type blink.pairs.WrapType
---- @field move_cursor? boolean Defaults to true
-
---- @alias blink.pairs.WrapValue blink.pairs.WrapType | blink.pairs.WrapOpts
+--- @alias blink.pairs.WrapValue blink.pairs.WrapType
 --- @alias blink.pairs.WrapDefinitions table<string, blink.pairs.WrapValue> | { normal_mode: table<string, blink.pairs.WrapTypeNormal> }
 
 --- @class (exact) blink.pairs.RuleDefinition
@@ -55,7 +51,6 @@ local mappings = {
       -- ['<M-,>'] = '<>',
 
       normal_mode = {
-        -- move closing pair via motion
         -- ['<C-b>'] = 'motion',
         -- move opening pair via motion
         -- ['<C-S-b>'] = 'motion_reverse',
@@ -166,6 +161,41 @@ function mappings.validate(config)
   for key, defs in pairs(config.pairs) do
     mappings.validate_rules(key, defs)
   end
+  mappings.validate_wrap('mappings.wrap', config.wrap)
+end
+
+function mappings.validate_wrap(key, defs)
+  local validation_schema = { normal_mode = { defs.normal_mode, 'table' } }
+  for wrap_key, def in pairs(defs) do
+    if wrap_key == 'normal_mode' then
+      if type(def) == 'table' then mappings.validate_normal_mode_wrap(key .. '.' .. wrap_key, def) end
+    else
+      validation_schema[wrap_key] = {
+        def,
+        function(val)
+          return vim.tbl_contains({ 'motion', 'motion_reverse', 'treesitter', 'treesitter_reverse', '' }, val)
+            or val == false
+            or val == nil
+        end,
+        'one of "motion", "motion_reverse", "treesitter", "treesitter_reverse"',
+      }
+    end
+  end
+
+  validate(key, validation_schema, defs)
+end
+
+function mappings.validate_normal_mode_wrap(key, defs)
+  local validation_schema = {}
+  for wrap_key, def in pairs(defs) do
+    validation_schema[wrap_key] = {
+      def,
+      function(val) return vim.tbl_contains({ 'motion', 'motion_reverse', '' }, val) or val == false or val == nil end,
+      'one of "motion", "motion_reverse"',
+    }
+  end
+
+  validate(key, validation_schema, defs)
 end
 
 function mappings.validate_rules(key, defs)
