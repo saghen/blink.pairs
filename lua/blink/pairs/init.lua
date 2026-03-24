@@ -15,7 +15,7 @@ function pairs.setup(user_config)
 
     local _, err = pcall(function()
       if config.mappings.enabled then require('blink.pairs.mappings').enable() end
-      if config.highlights.enabled then require('blink.pairs.highlighter').register(config.highlights) end
+      if config.highlights.enabled then require('blink.pairs.highlight').register(config.highlights) end
     end)
     if err then vim.print('Failed to setup blink.pairs: ' .. err) end
   end)
