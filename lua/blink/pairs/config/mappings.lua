@@ -84,6 +84,7 @@ local mappings = {
             -- TODO: disable inside "" strings?
             return ctx.ft ~= 'plaintext'
               and ctx.ft ~= 'scheme'
+              and ctx.ft ~= 'fennel'
               and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'"))
               and ctx.ts:blacklist('singlequote').matches
           end,
