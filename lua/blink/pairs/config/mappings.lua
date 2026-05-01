@@ -70,6 +70,11 @@ local mappings = {
       ['{'] = '}',
       ["'"] = {
         {
+          "''",
+          when = function(ctx) return ctx:text_before_cursor(1) == "'" end,
+          languages = { 'nix' },
+        },
+        {
           "'''",
           when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
           languages = { 'python', 'toml' },
