@@ -17,6 +17,7 @@
     inherit (nixpkgs) lib;
     inherit (lib.attrsets) genAttrs mapAttrs' nameValuePair;
     inherit (lib.fileset) fileFilter toSource unions;
+    inherit (lib.meta) getExe';
     inherit (lib.strings) hasPrefix;
 
     systems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
@@ -80,6 +81,18 @@
         blink-pairs = final.callPackage blink-pairs-package {};
       });
     };
+
+    apps = forAllSystems (system: let
+      pkgs = nixpkgsFor.${system};
+    in {
+      build-plugin = {
+        type = "app";
+        program =
+          (pkgs.writeShellScript "build-plugin" ''
+            ${getExe' pkgs.fenix.minimal.toolchain "cargo"} build --release
+          '').outPath;
+      };
+    });
 
     devShells = forAllSystems (
       system: let
