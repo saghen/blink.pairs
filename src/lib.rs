@@ -39,7 +39,7 @@ fn parse_buffer(
         Option<usize>,
         Option<usize>,
     ),
-) -> LuaResult<bool> {
+) -> LuaResult<(bool, bool)> {
     let lines_ref = lines.iter().map(|str| str.as_ref()).collect::<Vec<_>>();
 
     let mut parsed_buffers = get_parsed_buffers();
@@ -58,9 +58,9 @@ fn parse_buffer(
     // Full parse
     else if let Some(parsed_buffer) = ParsedBuffer::parse(&filetype, tab_width, &lines_ref) {
         parsed_buffers.insert(bufnr, parsed_buffer);
-        Ok(true)
+        Ok((true, false))
     } else {
-        Ok(false)
+        Ok((false, false))
     }
 }
 

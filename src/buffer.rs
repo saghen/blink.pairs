@@ -25,7 +25,7 @@ impl ParsedBuffer {
         start_line: Option<usize>,
         old_end_line: Option<usize>,
         _new_end_line: Option<usize>,
-    ) -> bool {
+    ) -> (bool, bool) {
         let max_line = self.matches_by_line.len();
         let start_line = start_line.unwrap_or(0).min(max_line);
         let old_end_line = old_end_line.unwrap_or(max_line).min(max_line);
@@ -39,30 +39,43 @@ impl ParsedBuffer {
             State::Normal
         };
 
-        if let Some(new) = parse_filetype(filetype, tab_width, lines, initial_state) {
-            // Use lines.len() as authoritative length to avoid index mismatch
-            // when start_line is clamped by max_line
-            let length = lines.len();
+        // Capture the state at the end of the replaced range before splicing
+        let old_end_state = self
+            .state_by_line
+            .get(old_end_line.saturating_sub(1))
+            .cloned()
+            .unwrap_or(State::Normal);
 
-            self.matches_by_line.splice(
-                start_line..old_end_line,
-                new.matches_by_line.into_iter().take(length),
-            );
-            self.state_by_line.splice(
-                start_line..old_end_line,
-                new.state_by_line.into_iter().take(length),
-            );
-            self.indent_levels.splice(
-                start_line..old_end_line.min(self.indent_levels.len()),
-                new.indent_levels.into_iter().take(length),
-            );
+        let Some(new) = parse_filetype(filetype, tab_width, lines, initial_state) else {
+            return (false, false);
+        };
 
-            self.calculate_stack_heights(tab_width);
+        // Use lines.len() as authoritative length to avoid index mismatch
+        // when start_line is clamped by max_line
+        let length = lines.len();
 
-            true
-        } else {
-            false
-        }
+        let new_end_state = new
+            .state_by_line
+            .last()
+            .cloned()
+            .unwrap_or(State::Normal);
+
+        self.matches_by_line.splice(
+            start_line..old_end_line,
+            new.matches_by_line.into_iter().take(length),
+        );
+        self.state_by_line.splice(
+            start_line..old_end_line,
+            new.state_by_line.into_iter().take(length),
+        );
+        self.indent_levels.splice(
+            start_line..old_end_line.min(self.indent_levels.len()),
+            new.indent_levels.into_iter().take(length),
+        );
+
+        self.calculate_stack_heights(tab_width);
+
+        (true, old_end_state != new_end_state)
     }
 
     fn calculate_stack_heights(&mut self, tab_width: u8) {
