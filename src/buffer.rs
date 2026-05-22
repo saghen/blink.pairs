@@ -272,7 +272,7 @@ impl ParsedBuffer {
         line_number: usize,
         col: usize,
     ) -> impl Iterator<Item = MatchWithLine> + '_ {
-        self.matches_by_line[line_number.max(0)..]
+        self.matches_by_line[line_number..]
             .iter()
             .enumerate()
             .flat_map(move |(offset, matches)| {
@@ -602,7 +602,7 @@ impl ParsedBuffer {
             if match_.kind == Kind::Closing
                 && match_.token.opening() == opening
                 && match_.token.closing() == Some(closing)
-                && match_.stack_height == None
+                && match_.stack_height.is_none()
                 && current_stack_height == lowest_stack_height
             {
                 return Some(match_);
