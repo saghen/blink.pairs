@@ -1,8 +1,6 @@
-use std::{
-    cell::Cell,
-    rc::Rc,
-    simd::{cmp::SimdPartialEq, Select, Simd},
-};
+use std::{cell::Cell, rc::Rc, sync::LazyLock};
+
+use fearless_simd::{Level, Select as _, Simd, SimdBase, SimdInt as _};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CharPos {
@@ -16,16 +14,50 @@ impl CharPos {
     }
 }
 
+/// Prepare lines for tokenization by joining them with newlines and padding the
+/// result to the next multiple of the simd width
+pub fn join_lines(lines: &[&str]) -> Vec<u8> {
+    let len = lines.iter().map(|l| l.len()).sum::<usize>() + lines.len().saturating_sub(1);
+    // pad to 64, which is an upper bound on the SIMD width
+    let len = len.next_multiple_of(64);
+    let mut lines = lines.iter();
+    if let Some(line) = lines.next() {
+        let mut text = Vec::<u8>::with_capacity(len);
+        text.extend_from_slice(line.as_bytes());
+        for line in lines {
+            text.push(b'\n');
+            text.extend_from_slice(line.as_bytes());
+        }
+        text.extend(std::iter::repeat_n(0, len - text.len()));
+        text
+    } else {
+        Vec::new()
+    }
+}
+
 /// Takes input text and uses SIMD to find the provided list of tokens in the text
 /// returning the byte and column position of each token. You can get the row by counting
 /// every incoming `\n` token
-pub fn tokenize<'s, const N: usize>(
-    text: &'s str,
+#[inline]
+pub fn tokenize<'s>(
+    text: &'s [u8],
     tokens: &'static [u8],
-) -> impl Iterator<Item = CharPos> + 's {
-    let none = Simd::<u8, N>::splat(0);
-    let new_line = Simd::<u8, N>::splat(b'\n');
-    let escape = Simd::<u8, N>::splat(b'\\');
+) -> Box<dyn Iterator<Item = CharPos> + 's> {
+    static LEVEL: LazyLock<Level> = LazyLock::new(Level::new);
+    let level = *LEVEL;
+    fearless_simd::dispatch!(level, simd => tokenize_impl(simd, text, tokens))
+}
+
+#[inline(always)]
+fn tokenize_impl<'s, S: Simd>(
+    simd: S,
+    text: &'s [u8],
+    tokens: &'static [u8],
+) -> Box<dyn Iterator<Item = CharPos> + 's> {
+    assert!(text.len().is_multiple_of(S::u8s::N));
+    let none = S::u8s::splat(simd, 0);
+    let new_line = S::u8s::splat(simd, b'\n');
+    let escape = S::u8s::splat(simd, b'\\');
 
     let tokens_to_find = tokens
         .iter()
@@ -34,20 +66,18 @@ pub fn tokenize<'s, const N: usize>(
                 // Enabled by default, ignore
                 0 | b'\n' | b'\\' => None,
 
-                _ => Some(Simd::<u8, N>::splat(c)),
+                _ => Some(S::u8s::splat(simd, c)),
             }
         })
         .collect::<Vec<_>>();
-
-    //
 
     // TODO: must use Rc and Cell here since we need to mutate the value inside a closure
     // which uses `move`, so otherwise we would copy, and the value would be reset on every
     // chunk
     let col_offset = Rc::new(Cell::new(0));
-    text.as_bytes()
-        .chunks(N)
-        .map(Simd::<u8, N>::load_or_default)
+    let iter = text
+        .chunks_exact(S::u8s::N)
+        .map(move |c| S::u8s::from_slice(simd, c))
         .enumerate()
         .flat_map(move |(chunk_idx, chunk)| {
             let mut tokens = none;
@@ -59,12 +89,10 @@ pub fn tokenize<'s, const N: usize>(
             }
 
             // Apply parsed tokens
-            let chunk_col = chunk_idx * N;
+            let chunk_col = chunk_idx * S::u8s::N;
             let col_offset = col_offset.clone();
-            tokens
-                .to_array()
-                .into_iter()
-                .enumerate()
+            (0..S::u8s::N)
+                .map(move |i| (i, tokens[i]))
                 .flat_map(move |(idx_in_chunk, byte)| match byte {
                     0 => None,
                     b'\n' => {
@@ -80,7 +108,8 @@ pub fn tokenize<'s, const N: usize>(
                         col: chunk_col + idx_in_chunk - col_offset.get(),
                     }),
                 })
-        })
+        });
+    Box::new(iter)
 }
 
 // TODO: come up with a better way to do testing
@@ -90,17 +119,16 @@ mod tests {
 
     #[test]
     fn test_tokenize() {
-        let text = vec![
+        let text = join_lines(&[
             "use crate::r#const::*;",
             "use std::ops::Not;",
             "use std::simd::cmp::*;",
             "use std::simd::num::SimdUint;",
             "use std::simd::{Mask, Simd};",
-        ]
-        .join("\n");
+        ]);
 
         assert_eq!(
-            tokenize::<16>(&text, &[b'(', b')', b'{', b'}']).collect::<Vec<_>>(),
+            tokenize(&text, b"(){}").collect::<Vec<_>>(),
             vec![
                 CharPos::new(b'\n', 0),
                 CharPos::new(b'\n', 0),

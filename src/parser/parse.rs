@@ -1,6 +1,9 @@
 use itertools::Itertools;
 
-use crate::{buffer::ParsedBuffer, parser::indent::indent_levels};
+use crate::{
+    buffer::ParsedBuffer,
+    parser::{indent::indent_levels, tokenize::join_lines},
+};
 
 use super::{matcher::Matcher, tokenize::tokenize};
 
@@ -32,16 +35,8 @@ pub fn parse<M: Matcher>(
 
     let mut escaped_col: Option<usize> = None;
 
-    let text = lines.join("\n");
-
-    #[cfg(target_feature = "avx512f")]
-    const N: usize = 64;
-    #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
-    const N: usize = 32;
-    #[cfg(not(any(target_feature = "avx2", target_feature = "avx512f")))]
-    const N: usize = 16;
-
-    let tokens = tokenize::<N>(&text, matcher.tokens());
+    let text = join_lines(lines);
+    let tokens = tokenize(&text, matcher.tokens());
     let indent_levels = indent_levels(lines, tab_width);
 
     let mut tokens = tokens.multipeek();

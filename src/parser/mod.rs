@@ -1,5 +1,3 @@
-pub type SimdVec = std::simd::Simd<u8, 16>;
-
 pub mod indent;
 pub mod languages;
 pub mod matcher;

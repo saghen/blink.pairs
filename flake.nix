@@ -3,43 +3,27 @@
 
   inputs = {
     nixpkgs.url = "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz";
-
-    fenix.url = "github:nix-community/fenix";
-    fenix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
     nixpkgs,
-    fenix,
     self,
     ...
   }: let
     inherit (nixpkgs) lib;
-    inherit (lib.attrsets) genAttrs mapAttrs' nameValuePair;
+    inherit (lib.attrsets) genAttrs getLib mapAttrs' nameValuePair;
     inherit (lib.fileset) fileFilter toSource unions;
-    inherit (lib.meta) getExe';
     inherit (lib.strings) hasPrefix;
 
     systems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin"];
     forAllSystems = genAttrs systems;
-    nixpkgsFor = forAllSystems (system:
-      import nixpkgs {
-        inherit system;
-        overlays = [fenix.overlays.default];
-      });
+    nixpkgsFor = forAllSystems (system: nixpkgs.legacyPackages.${system});
 
     version = "0.4.1";
     blink-pairs-package = {
-      fenix,
-      makeRustPlatform,
+      rustPlatform,
       vimUtils,
-    }: let
-      inherit (fenix.minimal) toolchain;
-      rustPlatform = makeRustPlatform {
-        cargo = toolchain;
-        rustc = toolchain;
-      };
-    in
+    }:
       vimUtils.buildVimPlugin {
         pname = "blink.pairs";
         inherit version;
@@ -84,13 +68,15 @@
 
     apps = forAllSystems (system: let
       pkgs = nixpkgsFor.${system};
+      build-plugin = pkgs.writeShellScript "build-plugin" ''
+        mkdir -p ./target/release
+        ln -s ${getLib self.packages.${system}.blink-pairs.rust_lib}/lib/*.so ./target/release/
+      '';
     in {
       build-plugin = {
         type = "app";
-        program =
-          (pkgs.writeShellScript "build-plugin" ''
-            ${getExe' pkgs.fenix.minimal.toolchain "cargo"} build --release
-          '').outPath;
+        program = build-plugin.outPath;
+        meta.description = "Build the rust library and link it to ./target/release/";
       };
     });
 
@@ -105,18 +91,11 @@
             packages.blink-pairs
             packages.blink-pairs.rust_lib
           ];
-          packages = [pkgs.fenix.rust-analyzer];
+          packages = [pkgs.rust-analyzer];
         };
       }
     );
 
     checks = forAllSystems (system: mapAttrs' (n: nameValuePair "package-${n}") (removeAttrs self.packages.${system} ["default"]));
-  };
-
-  nixConfig = {
-    extra-substituters = ["https://nix-community.cachix.org"];
-    extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs"
-    ];
   };
 }

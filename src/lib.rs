@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use mlua::prelude::*;
 use parser::matcher::TokenType;
 use std::collections::HashMap;
