@@ -143,7 +143,7 @@ fn get_indent_levels(
 // NOTE: skip_memory_check greatly improves performance
 // https://github.com/mlua-rs/mlua/issues/318
 #[mlua::lua_module(skip_memory_check)]
-fn blink_pairs(lua: &Lua) -> LuaResult<LuaTable> {
+fn blink_pairs_parser(lua: &Lua) -> LuaResult<LuaTable> {
     let exports = lua.create_table()?;
     exports.set("parse_buffer", lua.create_function(parse_buffer)?)?;
     exports.set("supports_filetype", lua.create_function(supports_filetype)?)?;

@@ -1,21 +1,3 @@
-local function get_lib_extension()
-  if jit.os:lower() == 'mac' or jit.os:lower() == 'osx' then return '.dylib' end
-  if jit.os:lower() == 'windows' then return '.dll' end
-  return '.so'
-end
-
--- search for the lib in the /target/release directory with and without the lib prefix
--- since MSVC doesn't include the prefix
-package.cpath = package.cpath
-  .. ';'
-  .. debug.getinfo(1).source:match('@?(.*/)')
-  .. '../../../target/release/lib?'
-  .. get_lib_extension()
-  .. ';'
-  .. debug.getinfo(1).source:match('@?(.*/)')
-  .. '../../../target/release/?'
-  .. get_lib_extension()
-
 --- @class blink.pairs.Parser
 --- @field parse_buffer fun(bufnr: number?, shiftwidth: number, filetype: string, lines: string[], start_line: number?, old_end_line: number?, new_end_line: number?): boolean
 --- @field supports_filetype fun(filetype: string): boolean
@@ -38,6 +20,8 @@ package.cpath = package.cpath
 --- @class blink.pairs.MatchWithLine : blink.pairs.Match
 --- @field line number
 
+local project_root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h')
+local native = require('blink.lib.native')
 --- @type blink.pairs.Parser
-local rust = require('blink_pairs')
+local rust = native.load('blink_pairs_parser', native.try_git_commit(project_root))
 return rust

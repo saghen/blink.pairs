@@ -51,7 +51,7 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   if did_parse and state_changed and new_end_line then parse_buffer(bufnr) end
 
   if did_parse and require('blink.pairs.config').debug then
-    vim.print('parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms')
+    require('blink.pairs.logger'):notify(vim.log.levels.INFO, 'parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms')
   end
 
   return did_parse

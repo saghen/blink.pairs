@@ -1,5 +1,5 @@
 [package]
-name = "blink_pairs"
+name = "blink_pairs_parser"
 version = "0.1.0"
 edition = "2021"
 

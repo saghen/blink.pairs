@@ -1,48 +1,76 @@
 -- TODO: injected languages for markdown
 -- TODO: many many more language definitions
 
+local success, err = pcall(require, 'blink.lib')
+if not success then
+  error('blink.pairs v0.6+ requires blink.lib ("saghen/blink.lib") installed via your package manager: ' .. err)
+end
+if vim.fn.has('nvim-0.12') == 0 then error('blink.lib v0.6+ requires nvim 0.12+, consider pinning to v0.5') end
+
+local lib = require('blink.lib')
+local logger = require('blink.pairs.logger')
+
+local native = require('blink.lib.native.managed').new({
+  module_name = 'blink.pairs',
+  library_name = 'blink_pairs_parser',
+  current_file_path = debug.getinfo(1, 'S').source:sub(2),
+  logger = logger,
+})
+
 local pairs = {}
 
 --- @param user_config blink.pairs.Config
 function pairs.setup(user_config)
-  if vim.fn.has('nvim-0.11') == 0 then error('blink.pairs requires at least nvim 0.11') end
-
   local config = require('blink.pairs.config')
-  config.merge_with(user_config)
+  config(user_config)
 
-  pairs.download_if_available(function(err)
-    if err then error(err) end
+  if not pairs.library_available() then
+    logger:notify(vim.log.levels.ERROR, {
+      { 'v0.6+ uses a new build/download system for the native library. Please add ' },
+      { " build = function() require('blink.pairs').build():pwait(60000) end ", 'DiagnosticVirtualTextInfo' },
+      { ' OR ' },
+      { " build = function() require('blink.pairs').download():pwait(60000) end ", 'DiagnosticVirtualTextInfo' },
+      { ' to your lazy.nvim config. For vim.pack, simply call either function before calling setup().' },
+    })
+    return
+  end
 
-    local _, err = pcall(function()
-      if config.mappings.enabled then require('blink.pairs.mappings').enable() end
-      if config.highlights.enabled then require('blink.pairs.highlight').register(config.highlights) end
-    end)
-    if err then vim.print('Failed to setup blink.pairs: ' .. err) end
-  end)
+  if config.mappings.enabled then require('blink.pairs.mappings').enable() end
+  if config.highlights.enabled then require('blink.pairs.highlight').register(config.highlights) end
 end
 
---- You may optionally use `blink.download` for prebuilt binaries with the included `Cross.toml`
---- and `.github/workflows/release.yaml`
-function pairs.download_if_available(callback)
-  local success, downloader = pcall(require, 'blink.download')
-  if not success then return callback() end
+function pairs.library_available() return native:library_available() end
 
-  -- See https://github.com/Saghen/blink.download for more info
-  local root_dir = vim.fn.resolve(debug.getinfo(1).source:match('@?(.*/)') .. '../../../')
-
-  downloader.ensure_downloaded({
-    -- omit this property to disable downloading
-    download_url = function(version, system_triple, extension)
-      return 'https://github.com/saghen/blink.pairs/releases/download/' .. version .. '/' .. system_triple .. extension
+--- Builds the precompiled library if it's not already available
+--- @param opts? { force?: boolean, dev?: boolean }
+--- @return blink.lib.Task
+function pairs.build(opts)
+  return native:build(
+    { 'cargo', 'build', '--release' },
+    function(repo_root, platform)
+      return {
+        repo_root .. '/target/release/libblink_pairs_parser' .. platform.lib_extension,
+        repo_root .. '/target/release/blink_pairs_parser' .. platform.lib_extension,
+      }
     end,
-    on_download = function()
-      vim.notify('[blink.pairs] Downloading prebuilt binary...', vim.log.levels.INFO, { title = 'blink.pairs' })
-    end,
+    opts
+  )
+end
 
-    root_dir = root_dir,
-    output_dir = '/target/release',
-    binary_name = 'blink_pairs', -- excluding `lib` prefix
-  }, callback)
+--- Downloads the precompiled library if it's not already available
+--- @param opts? { force?: boolean, dev?: boolean }
+--- @return blink.lib.Task
+function pairs.download(opts)
+  return native:download(
+    function(git_tag, platform)
+      return 'https://github.com/saghen/blink.pairs/releases/download/'
+        .. git_tag
+        .. '/'
+        .. platform.triple
+        .. platform.lib_extension
+    end,
+    opts
+  )
 end
 
 -- Get match at a given position in a buffer
