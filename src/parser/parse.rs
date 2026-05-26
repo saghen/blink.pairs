@@ -39,7 +39,7 @@ pub fn parse<M: Matcher>(
     let tokens = tokenize(&text, matcher.tokens());
     let indent_levels = indent_levels(lines, tab_width);
 
-    let mut tokens = tokens.multipeek();
+    let mut tokens = tokens.into_iter().multipeek();
 
     while let Some(token) = tokens.next() {
         // New line

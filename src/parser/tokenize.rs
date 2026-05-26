@@ -1,6 +1,4 @@
-use std::{cell::Cell, rc::Rc, sync::LazyLock};
-
-use fearless_simd::{Level, Select as _, Simd, SimdBase, SimdInt as _};
+use fearless_simd::{dispatch, Level, Select, Simd, SimdBase, SimdInt};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CharPos {
@@ -38,24 +36,14 @@ pub fn join_lines(lines: &[&str]) -> Vec<u8> {
 /// Takes input text and uses SIMD to find the provided list of tokens in the text
 /// returning the byte and column position of each token. You can get the row by counting
 /// every incoming `\n` token
-#[inline]
-pub fn tokenize<'s>(
-    text: &'s [u8],
-    tokens: &'static [u8],
-) -> Box<dyn Iterator<Item = CharPos> + 's> {
-    static LEVEL: LazyLock<Level> = LazyLock::new(Level::new);
-    let level = *LEVEL;
-    fearless_simd::dispatch!(level, simd => tokenize_impl(simd, text, tokens))
+pub fn tokenize(text: &[u8], tokens: &'static [u8]) -> Vec<CharPos> {
+    let level = Level::new();
+    dispatch!(level, simd => tokenize_impl(simd, text, tokens))
 }
 
 #[inline(always)]
-fn tokenize_impl<'s, S: Simd>(
-    simd: S,
-    text: &'s [u8],
-    tokens: &'static [u8],
-) -> Box<dyn Iterator<Item = CharPos> + 's> {
+fn tokenize_impl<S: Simd>(simd: S, text: &[u8], tokens: &'static [u8]) -> Vec<CharPos> {
     assert!(text.len().is_multiple_of(S::u8s::N));
-    let none = S::u8s::splat(simd, 0);
     let new_line = S::u8s::splat(simd, b'\n');
     let escape = S::u8s::splat(simd, b'\\');
 
@@ -71,45 +59,40 @@ fn tokenize_impl<'s, S: Simd>(
         })
         .collect::<Vec<_>>();
 
-    // TODO: must use Rc and Cell here since we need to mutate the value inside a closure
-    // which uses `move`, so otherwise we would copy, and the value would be reset on every
-    // chunk
-    let col_offset = Rc::new(Cell::new(0));
-    let iter = text
-        .chunks_exact(S::u8s::N)
-        .map(move |c| S::u8s::from_slice(simd, c))
-        .enumerate()
-        .flat_map(move |(chunk_idx, chunk)| {
-            let mut tokens = none;
-            tokens |= new_line.simd_eq(chunk).select(new_line, none);
-            tokens |= escape.simd_eq(chunk).select(escape, none);
+    let mut result = Vec::with_capacity(text.len() / 64);
+    let mut col_offset = 0usize;
 
-            for &char in tokens_to_find.iter() {
-                tokens |= char.simd_eq(chunk).select(char, none);
-            }
+    for (chunk_idx, chunk_bytes) in text.chunks_exact(S::u8s::N).enumerate() {
+        let chunk = S::u8s::from_slice(simd, chunk_bytes);
+        let mut mask = new_line.simd_eq(chunk);
+        mask |= escape.simd_eq(chunk);
+        for &char in tokens_to_find.iter() {
+            mask |= char.simd_eq(chunk);
+        }
+        let tokens = mask.select(chunk, S::u8s::splat(simd, 0));
 
-            // Apply parsed tokens
-            let chunk_col = chunk_idx * S::u8s::N;
-            let col_offset = col_offset.clone();
-            (0..S::u8s::N)
-                .map(move |i| (i, tokens[i]))
-                .flat_map(move |(idx_in_chunk, byte)| match byte {
-                    0 => None,
-                    b'\n' => {
-                        col_offset.set(chunk_col + idx_in_chunk + 1);
-
-                        Some(CharPos {
-                            byte: b'\n',
-                            col: 0,
-                        })
-                    }
-                    byte => Some(CharPos {
+        let chunk_col = chunk_idx * S::u8s::N;
+        for (idx_in_chunk, &byte) in tokens.as_slice().iter().enumerate() {
+            match byte {
+                0 => {}
+                b'\n' => {
+                    col_offset = chunk_col + idx_in_chunk + 1;
+                    result.push(CharPos {
+                        byte: b'\n',
+                        col: 0,
+                    });
+                }
+                byte => {
+                    result.push(CharPos {
                         byte,
-                        col: chunk_col + idx_in_chunk - col_offset.get(),
-                    }),
-                })
-        });
-    Box::new(iter)
+                        col: chunk_col + idx_in_chunk - col_offset,
+                    });
+                }
+            }
+        }
+    }
+
+    result
 }
 
 // TODO: come up with a better way to do testing
@@ -128,7 +111,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            tokenize(&text, b"(){}").collect::<Vec<_>>(),
+            tokenize(&text, b"(){}"),
             vec![
                 CharPos::new(b'\n', 0),
                 CharPos::new(b'\n', 0),

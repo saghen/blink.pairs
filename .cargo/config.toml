@@ -1,6 +1,3 @@
-[build]
-rustflags = ["-C", "target-cpu=native"]
-
 [target.x86_64-apple-darwin]
 rustflags = [
   "-C", "link-arg=-undefined",
