@@ -8,4 +8,4 @@ return config.new({
   mappings = require('blink.pairs.config.mappings'),
   highlights = require('blink.pairs.config.highlights'),
   debug = { false, 'boolean' },
-})
+}, { validate = false })

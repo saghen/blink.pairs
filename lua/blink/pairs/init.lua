@@ -7,9 +7,7 @@ if not success then
 end
 if vim.fn.has('nvim-0.12') == 0 then error('blink.lib v0.6+ requires nvim 0.12+, consider pinning to v0.5') end
 
-local lib = require('blink.lib')
 local logger = require('blink.pairs.logger')
-
 local native = require('blink.lib.native.managed').new({
   module_name = 'blink.pairs',
   library_name = 'blink_pairs_parser',
@@ -25,14 +23,13 @@ function pairs.setup(user_config)
   config(user_config)
 
   if not pairs.library_available() then
-    logger:notify(vim.log.levels.ERROR, {
+    return logger:notify(vim.log.levels.ERROR, {
       { 'v0.6+ uses a new build/download system for the native library. Please add ' },
       { " build = function() require('blink.pairs').build():pwait(60000) end ", 'DiagnosticVirtualTextInfo' },
       { ' OR ' },
       { " build = function() require('blink.pairs').download():pwait(60000) end ", 'DiagnosticVirtualTextInfo' },
       { ' to your lazy.nvim config. For vim.pack, simply call either function before calling setup().' },
     })
-    return
   end
 
   if config.mappings.enabled then require('blink.pairs.mappings').enable() end
