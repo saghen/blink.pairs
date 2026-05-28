@@ -48,14 +48,13 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 ```lua
 {
   'saghen/blink.pairs',
-  version = '*', -- (recommended) only required with prebuilt binaries
+  version = '*', -- (recommended) optional but required for prebuilt binaries
+  dependencies = 'saghen/blink.lib',
 
   -- download prebuilt binaries from github releases
-  dependencies = 'saghen/blink.download',
-  -- OR build from source:
-  -- build = 'cargo build --release',
-  -- If you use nix, you can build from source with:
-  -- build = 'nix run .#build-plugin',
+  build = function() require('blink.pairs').download():pwait(60000) end,
+  -- OR build from source
+  -- build = function() require('blink.pairs').build():pwait(60000) end,
 
   --- @module 'blink.pairs'
   --- @type blink.pairs.Config
@@ -104,4 +103,18 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
     debug = false,
   }
 }
+```
+
+### `vim.pack`
+
+```lua
+vim.pack.add({ { src = 'https://github.com/saghen/blink.pairs', version = vim.version.range('*') } })
+
+-- download prebuilt binaries from github releases
+require('blink.pairs').download():pwait(60000)
+-- OR build from source
+-- require('blink.pairs').build():pwait(60000)
+
+-- see above for the config
+require('blink.pairs').setup()
 ```
