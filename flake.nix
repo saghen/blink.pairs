@@ -11,7 +11,7 @@
     ...
   }: let
     inherit (nixpkgs) lib;
-    inherit (lib.attrsets) genAttrs getLib mapAttrs' nameValuePair;
+    inherit (lib.attrsets) genAttrs mapAttrs' nameValuePair;
     inherit (lib.fileset) fileFilter toSource unions;
     inherit (lib.strings) hasPrefix;
 
@@ -68,20 +68,6 @@
         blink-pairs = final.callPackage blink-pairs-package {};
       });
     };
-
-    apps = forAllSystems (system: let
-      pkgs = nixpkgsFor.${system};
-      build-plugin = pkgs.writeShellScript "build-plugin" ''
-        mkdir -p ./target/release
-        ln -s ${getLib self.packages.${system}.blink-pairs.rust_lib}/lib/*.so ./target/release/
-      '';
-    in {
-      build-plugin = {
-        type = "app";
-        program = build-plugin.outPath;
-        meta.description = "Build the rust library and link it to ./target/release/";
-      };
-    });
 
     devShells = forAllSystems (
       system: let
