@@ -257,7 +257,6 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
             fn call<I>(
                 &mut self,
-                matches_by_line: &mut Vec<Vec<Match>>,
                 matches: &mut Vec<Match>,
                 tokens: &mut MultiPeek<I>,
                 state: State,

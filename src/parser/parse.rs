@@ -1,11 +1,14 @@
 use itertools::Itertools;
 
-use crate::{
-    buffer::ParsedBuffer,
-    parser::{indent::indent_levels, tokenize::join_lines},
-};
+use crate::buffer::ParsedBuffer;
 
-use super::{matcher::Matcher, tokenize::tokenize};
+use super::matcher::Matcher;
+
+#[derive(Debug, Clone, Copy)]
+pub struct CharPos {
+    pub byte: u8,
+    pub col: usize,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum State {
@@ -20,83 +23,98 @@ pub enum State {
 
 /// Given a matcher, runs the tokenizer on the lines and keeps track
 /// of the state and matches for each line
-pub fn parse<M: Matcher>(
-    tab_width: u8,
-    lines: &[&str],
-    initial_state: State,
-    mut matcher: M,
-) -> ParsedBuffer {
-    // State
+pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -> ParsedBuffer {
     let mut matches_by_line = Vec::with_capacity(lines.len());
-    let mut line_matches = vec![];
-
+    let mut indents_by_line = Vec::with_capacity(lines.len());
     let mut state_by_line = Vec::with_capacity(lines.len());
+
+    let mut mask = [false; 256];
+    mask[b'\\' as usize] = true;
+    for &token in M::TOKENS {
+        mask[token as usize] = true;
+    }
+
+    let mut tokens = Vec::new();
+    let mut last_indent = None;
     let mut state = initial_state;
+    for line in lines {
+        let mut tabs: u8 = 0;
+        let mut spaces: u8 = 0;
+        let mut line_matches = Vec::new();
 
-    let mut escaped_col: Option<usize> = None;
-
-    let text = join_lines(lines);
-    let tokens = tokenize(&text, matcher.tokens());
-    let indent_levels = indent_levels(lines, tab_width);
-
-    let mut tokens = tokens.into_iter().multipeek();
-
-    while let Some(token) = tokens.next() {
-        // New line
-        if matches!(token.byte, b'\n') {
-            matches_by_line.push(line_matches);
-            line_matches = vec![];
-            escaped_col = None;
-
-            if matches!(
-                state,
-                State::InString(_) | State::InLineComment | State::InInlineSpan(_)
-            ) {
-                state = State::Normal;
-            }
-            state_by_line.push(state);
-            continue;
-        }
-
-        if matches!(token.byte, b'\\') {
-            if let Some(col) = escaped_col {
-                if col == token.col - 1 {
-                    escaped_col = None;
-                    continue;
+        tokens.clear();
+        let mut found_non_whitespace = false;
+        for (col, &byte) in line.as_bytes().iter().enumerate() {
+            if !found_non_whitespace {
+                std::hint::cold_path();
+                match byte {
+                    b'\t' => tabs = tabs.saturating_add(1),
+                    b' ' => spaces = spaces.saturating_add(1),
+                    _ => found_non_whitespace = true,
                 }
             }
-            escaped_col = Some(token.col);
-            continue;
+            if mask[byte as usize] {
+                std::hint::cold_path();
+                tokens.push(CharPos { byte, col });
+            }
+        }
+        if !found_non_whitespace {
+            std::hint::cold_path();
+            // this line is entirely whitespace, so use the previous line's indentation.
+            indents_by_line.push(last_indent.unwrap_or((tabs, spaces)));
+        } else {
+            indents_by_line.push((tabs, spaces));
+        }
+        last_indent = Some((tabs, spaces));
+
+        let mut escaped_col = None;
+        let mut tokens = tokens.iter().copied().multipeek();
+        while let Some(token) = tokens.next() {
+            if matches!(token.byte, b'\\') {
+                if let Some(col) = escaped_col {
+                    if col == token.col - 1 {
+                        escaped_col = None;
+                        continue;
+                    }
+                }
+                escaped_col = Some(token.col);
+                continue;
+            }
+
+            state = matcher.call(
+                &mut line_matches,
+                &mut tokens,
+                state,
+                token,
+                escaped_col.map(|col| col == token.col - 1).unwrap_or(false),
+            );
         }
 
-        state = matcher.call(
-            &mut matches_by_line,
-            &mut line_matches,
-            &mut tokens,
+        if matches!(
             state,
-            token,
-            escaped_col.map(|col| col == token.col - 1).unwrap_or(false),
-        );
+            State::InString(_) | State::InLineComment | State::InInlineSpan(_)
+        ) {
+            state = State::Normal;
+        }
+        matches_by_line.push(line_matches);
+        state_by_line.push(state);
     }
-    matches_by_line.push(line_matches);
-    state_by_line.push(state);
 
     ParsedBuffer {
         matches_by_line,
+        indents_by_line,
         state_by_line,
-        indent_levels,
     }
 }
 
 // TODO: come up with a better way to do testing
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_filetype, Match, State};
+    use crate::parser::{Match, State, parse_filetype};
 
     fn parse(filetype: &str, lines: &str) -> Vec<Vec<Match>> {
         parse_filetype(
             filetype,
-            4,
             &lines.split('\n').collect::<Vec<_>>(),
             State::Normal,
         )

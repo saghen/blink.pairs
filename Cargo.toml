@@ -1,26 +1,25 @@
 [package]
 name = "blink_pairs_parser"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
-path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
 
 [[bench]]
-name = "lib"
 harness = false
+name = "lib"
 
 [dependencies]
-matcher-macros = { path = "matcher" }
 itertools = "0.14.0"
-mlua = { version = "0.11.6", features = ["module", "luajit"] }
-fearless_simd = "0.4.1"
+matcher-macros = { path = "matcher" }
+mlua = { version = "0.11.6", features = ["luajit", "module"] }
 
 [dev-dependencies]
 criterion = "0.8.2"
 pretty_assertions = "1.4.1"
 
 [profile.release]
-codegen-units = 1
 lto = true
+codegen-units = 1

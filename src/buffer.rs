@@ -2,8 +2,8 @@ use crate::parser::{parse_filetype, supports_filetype, Kind, Match, MatchWithLin
 
 pub struct ParsedBuffer {
     pub matches_by_line: Vec<Vec<Match>>,
+    pub indents_by_line: Vec<(u8, u8)>,
     pub state_by_line: Vec<State>,
-    pub indent_levels: Vec<u8>,
 }
 
 impl ParsedBuffer {
@@ -12,7 +12,7 @@ impl ParsedBuffer {
     }
 
     pub fn parse(filetype: &str, tab_width: u8, lines: &[&str]) -> Option<Self> {
-        let mut parsed = parse_filetype(filetype, tab_width, lines, State::Normal)?;
+        let mut parsed = parse_filetype(filetype, lines, State::Normal)?;
         parsed.calculate_stack_heights(tab_width);
         Some(parsed)
     }
@@ -45,7 +45,7 @@ impl ParsedBuffer {
             .cloned()
             .unwrap_or(State::Normal);
 
-        let Some(new) = parse_filetype(filetype, tab_width, lines, initial_state) else {
+        let Some(new) = parse_filetype(filetype, lines, initial_state) else {
             return (false, false);
         };
 
@@ -63,9 +63,9 @@ impl ParsedBuffer {
             start_line..old_end_line,
             new.state_by_line.into_iter().take(length),
         );
-        self.indent_levels.splice(
-            start_line..old_end_line.min(self.indent_levels.len()),
-            new.indent_levels.into_iter().take(length),
+        self.indents_by_line.splice(
+            start_line..old_end_line.min(self.indents_by_line.len()),
+            new.indents_by_line.into_iter().take(length),
         );
 
         self.calculate_stack_heights(tab_width);
@@ -139,7 +139,8 @@ impl ParsedBuffer {
 
     /// Gets the indent level of the line, rounded down to the nearest tab width
     pub fn rounded_indent_level(&self, line: usize, tab_width: u8) -> u8 {
-        (self.indent_levels[line] / tab_width) * tab_width
+        let line_indents = self.indents_by_line[line];
+        line_indents.0 * tab_width + (line_indents.1 / tab_width) * tab_width
     }
 
     /// Given an unmatched opening's position, attempts to find a matching opening/closing pair
@@ -256,14 +257,15 @@ impl ParsedBuffer {
     }
 
     pub fn get_indent_levels(&self, start_line: usize, end_line: usize) -> Vec<u8> {
-        let start_idx = start_line.min(self.indent_levels.len());
-        let end_idx = end_line.min(self.indent_levels.len());
+        let start_idx = start_line.min(self.indents_by_line.len());
+        let end_idx = end_line.min(self.indents_by_line.len());
 
         if start_idx >= end_idx {
             return vec![];
         }
 
-        self.indent_levels[start_idx..end_idx].to_vec()
+        todo!()
+        // self.indents_by_line[start_idx..end_idx].iter().map().to_vec()
     }
 
     pub fn iter_from(
