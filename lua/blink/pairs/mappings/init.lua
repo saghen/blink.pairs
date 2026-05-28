@@ -4,7 +4,7 @@ local mappings = {}
 local disabled_filetypes_set = {}
 
 function mappings.enable()
-  local config = require('blink.pairs.config')
+  local config = require('blink.pairs.config').snapshot()
 
   disabled_filetypes_set = {}
   for _, ft in ipairs(config.mappings.disabled_filetypes) do
@@ -16,7 +16,7 @@ function mappings.enable()
 end
 
 function mappings.disable()
-  local config = require('blink.pairs.config')
+  local config = require('blink.pairs.config').snapshot()
   require('blink.pairs.mappings.ops').unregister(config.mappings.pairs, config.mappings.cmdline)
   require('blink.pairs.mappings.wrap').unregister(config.mappings.wrap)
 end
