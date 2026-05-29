@@ -1,4 +1,3 @@
-use itertools::MultiPeek;
 use mlua::IntoLua;
 
 mod token;
@@ -16,16 +15,15 @@ pub trait Matcher {
         Self::TOKENS
     }
 
-    fn call<I>(
+    fn call(
         &mut self,
         matches: &mut Vec<Match>,
-        tokens: &mut MultiPeek<I>,
+        tokens: &[CharPos],
+        idx: &mut usize,
         state: State,
         token: CharPos,
         escaped: bool,
-    ) -> State
-    where
-        I: Iterator<Item = CharPos>;
+    ) -> State;
 }
 
 #[derive(Debug, Clone, PartialEq)]

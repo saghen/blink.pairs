@@ -41,7 +41,9 @@ fn parse_buffer(
     let mut parsed_buffers = get_parsed_buffers();
 
     // Incremental parse
-    if let Some(parsed_buffer) = parsed_buffers.get_mut(&bufnr) {
+    if start_line.is_some()
+        && let Some(parsed_buffer) = parsed_buffers.get_mut(&bufnr)
+    {
         Ok(parsed_buffer.reparse_range(&filetype, tab_width, &lines_ref, start_line, old_end_line))
     }
     // Full parse

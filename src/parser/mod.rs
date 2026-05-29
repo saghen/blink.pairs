@@ -2,9 +2,8 @@ pub mod languages;
 pub mod matcher;
 pub mod parse;
 
-pub use itertools::MultiPeek;
 pub use matcher::{Kind, Match, MatchWithLine, Matcher, Token};
-pub use parse::{parse, CharPos, State};
+pub use parse::{CharPos, State, parse};
 
 use crate::buffer::ParsedBuffer;
 

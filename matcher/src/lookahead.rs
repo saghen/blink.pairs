@@ -56,14 +56,13 @@ pub fn generate_lookahead_extractors(max_lookahead: usize) -> TokenStream2 {
     let mut extractors = TokenStream2::new();
 
     for i in 0..max_lookahead {
-        let idx = i + 1;
-        let token_name = format_ident!("token_{}_byte", idx);
-        let distance_name = format_ident!("token_{}_distance", idx);
+        let lookahead = i + 1;
+        let token_name = format_ident!("token_{}_byte", lookahead);
+        let distance_name = format_ident!("token_{}_distance", lookahead);
 
         let extractor = quote! {
             let (#token_name, #distance_name) = {
-                let mut next_token = tokens.peek();
-
+                let next_token = tokens.get(*idx + #lookahead);
                 (
                     next_token.map(|t| t.byte).unwrap_or(0),
                     next_token.map(|t| t.col).unwrap_or(usize::MAX) - token.col,

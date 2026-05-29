@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::buffer::ParsedBuffer;
 
 use super::matcher::Matcher;
@@ -40,7 +38,6 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
     for line in lines {
         let mut tabs: u8 = 0;
         let mut spaces: u8 = 0;
-        let mut line_matches = Vec::new();
 
         tokens.clear();
         let mut found_non_whitespace = false;
@@ -67,27 +64,37 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
         }
         last_indent = Some((tabs, spaces));
 
+        let mut line_matches = Vec::new();
         let mut escaped_col = None;
-        let mut tokens = tokens.iter().copied().multipeek();
-        while let Some(token) = tokens.next() {
-            if matches!(token.byte, b'\\') {
-                if let Some(col) = escaped_col {
-                    if col == token.col - 1 {
-                        escaped_col = None;
-                        continue;
-                    }
+        let mut idx = 0;
+        while idx < tokens.len() {
+            let token = tokens[idx];
+            if token.byte == b'\\' {
+                if let Some(col) = escaped_col
+                    && col == token.col - 1
+                {
+                    escaped_col = None;
+                } else {
+                    escaped_col = Some(token.col);
                 }
-                escaped_col = Some(token.col);
+                idx += 1;
                 continue;
             }
 
             state = matcher.call(
                 &mut line_matches,
-                &mut tokens,
+                &tokens,
+                &mut idx,
                 state,
                 token,
                 escaped_col.map(|col| col == token.col - 1).unwrap_or(false),
             );
+            idx += 1;
+
+            // Once we're in a line comment, nothing else on this line can match.
+            if state == State::InLineComment {
+                break;
+            }
         }
 
         if matches!(
