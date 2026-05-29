@@ -1,4 +1,4 @@
-use crate::parser::{parse_filetype, supports_filetype, Kind, Match, MatchWithLine, State, Token};
+use crate::parser::{Kind, Match, MatchWithLine, State, Token, parse_filetype, supports_filetype};
 
 pub struct ParsedBuffer {
     pub matches_by_line: Vec<Vec<Match>>,
@@ -254,18 +254,6 @@ impl ParsedBuffer {
 
     pub fn line_matches(&self, line_number: usize) -> Option<Vec<Match>> {
         self.matches_by_line.get(line_number).cloned()
-    }
-
-    pub fn get_indent_levels(&self, start_line: usize, end_line: usize) -> Vec<u8> {
-        let start_idx = start_line.min(self.indents_by_line.len());
-        let end_idx = end_line.min(self.indents_by_line.len());
-
-        if start_idx >= end_idx {
-            return vec![];
-        }
-
-        todo!()
-        // self.indents_by_line[start_idx..end_idx].iter().map().to_vec()
     }
 
     pub fn iter_from(
