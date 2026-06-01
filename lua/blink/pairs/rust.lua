@@ -19,7 +19,7 @@
 --- @class blink.pairs.MatchWithLine : blink.pairs.Match
 --- @field line number
 
-local project_root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h')
+local project_root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h')
 local native = require('blink.lib.native')
 --- @type blink.pairs.Parser
 local rust = native.load('blink_pairs_parser', native.try_git_commit(project_root))
