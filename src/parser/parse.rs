@@ -43,7 +43,7 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
         let mut found_non_whitespace = false;
         for (col, &byte) in line.as_bytes().iter().enumerate() {
             if !found_non_whitespace {
-                std::hint::cold_path();
+                cold_path();
                 match byte {
                     b'\t' => tabs = tabs.saturating_add(1),
                     b' ' => spaces = spaces.saturating_add(1),
@@ -51,12 +51,12 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
                 }
             }
             if mask[byte as usize] {
-                std::hint::cold_path();
+                cold_path();
                 tokens.push(CharPos { byte, col });
             }
         }
         if !found_non_whitespace {
-            std::hint::cold_path();
+            cold_path();
             // this line is entirely whitespace, so use the previous line's indentation.
             indents_by_line.push(last_indent.unwrap_or((tabs, spaces)));
         } else {
@@ -112,6 +112,18 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
         indents_by_line,
         state_by_line,
     }
+}
+
+/// [`std::hint::cold_path`] intrinsic, when it is available (i.e., rust is at
+/// least 1.95.0).
+///
+/// NOTE: remove this and use [`std::hint::cold_path`] once rust 1.95.0 is
+/// sufficiently old (for instance, once it's available in debian)
+#[inline(always)]
+fn cold_path() {
+    // See build.rs for the definition of have_cold_path.
+    #[cfg(have_cold_path)]
+    std::hint::cold_path();
 }
 
 // TODO: come up with a better way to do testing
