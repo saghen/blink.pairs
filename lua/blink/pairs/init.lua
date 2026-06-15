@@ -42,7 +42,7 @@ function pairs.library_available() return native:library_available() end
 --- @param opts? { force?: boolean, dev?: boolean }
 --- @return blink.lib.Task
 function pairs.build(opts)
-  return native:build(
+  local build = native:build(
     { 'cargo', 'build', '--release' },
     function(repo_root, platform)
       return {
@@ -52,13 +52,17 @@ function pairs.build(opts)
     end,
     opts
   )
+  if not vim.tbl_contains(vim.api.nvim_list_runtime_paths(), native.repo_root) then
+    vim.opt.runtimepath:append(native.repo_root)
+  end
+  return build
 end
 
 --- Downloads the precompiled library if it's not already available
 --- @param opts? { force?: boolean, dev?: boolean }
 --- @return blink.lib.Task
 function pairs.download(opts)
-  return native:download(
+  local download = native:download(
     function(git_tag, platform)
       return 'https://github.com/saghen/blink.pairs/releases/download/'
         .. git_tag
@@ -68,6 +72,10 @@ function pairs.download(opts)
     end,
     opts
   )
+  if not vim.tbl_contains(vim.api.nvim_list_runtime_paths(), native.repo_root) then
+    vim.opt.runtimepath:append(native.repo_root)
+  end
+  return download
 end
 
 -- Get match at a given position in a buffer
