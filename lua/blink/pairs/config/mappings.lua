@@ -139,6 +139,9 @@ return {
             languages = { types.list('string'), 'nil' },
             when = { 'function', 'nil' },
             enter = { 'boolean', 'function', 'nil' },
+            open = { 'boolean', 'function', 'nil' },
+            close = { 'boolean', 'function', 'nil' },
+            open_or_close = { 'boolean', 'function', 'nil' },
             backspace = { 'boolean', 'function', 'nil' },
             space = { 'boolean', 'function', 'nil' },
           })
