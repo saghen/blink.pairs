@@ -64,15 +64,17 @@ function ops.on_key(key, rules)
 
       -- Multiple characters
 
-      local index_of_key = rule.opening:find(key, 1, true)
-      index_of_key = index_of_key ~= nil and index_of_key - 1 or 0
+      if key == rule.key then
+        local index_of_key = rule.opening:find(key, 1, true)
+        index_of_key = index_of_key ~= nil and index_of_key - 1 or 0
 
-      local opening_prefix = rule.opening:sub(1, index_of_key)
+        local opening_prefix = rule.opening:sub(1, index_of_key)
 
-      -- I.e. user types '"' for line 'r#|', we expand to 'r#""#'
-      -- or the pair is "'''", in which case the index_of_key is 0 because there's no relevant prefix
-      if index_of_key == 0 or ctx:is_before_cursor(opening_prefix) then
-        return ops.open_pair(ctx, key, rule, index_of_key + 1)
+        -- I.e. user types '"' for line 'r#|', we expand to 'r#""#'
+        -- or the pair is "'''", in which case the index_of_key is 0 because there's no relevant prefix
+        if index_of_key == 0 or ctx:is_before_cursor(opening_prefix) then
+          return ops.open_pair(ctx, key, rule, index_of_key + 1)
+        end
       end
 
       --- I.e. for line 'r#"', user types '"' to close the pair

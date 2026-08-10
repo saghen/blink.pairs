@@ -2,6 +2,7 @@
 --- @field priority number
 --- @field opening string
 --- @field closing string
+--- @field key string
 --- @field when fun(ctx: blink.pairs.Context): boolean
 --- @field open fun(ctx: blink.pairs.Context): boolean
 --- @field close fun(ctx: blink.pairs.Context): boolean
@@ -79,6 +80,7 @@ end
 function M.rule_from_def(key, def)
   if type(def) == 'string' then
     return {
+      key = key,
       opening = key,
       closing = def,
       priority = #key + #def,
@@ -106,6 +108,7 @@ function M.rule_from_def(key, def)
 
   return {
     priority = def.priority or priority,
+    key = key,
     closing = closing,
     opening = opening,
     when = when,
