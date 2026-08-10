@@ -167,12 +167,41 @@ function ops.open_or_close_pair(ctx, key, rule)
   return pair .. pair .. ops.shift_keycode(-#pair)
 end
 
+--- @param ctx blink.pairs.Context
+--- @param rules blink.pairs.Rule[]
+--- @return blink.pairs.Rule?
+--- @return integer? closing_indent
+function ops.get_multiline_surrounding(ctx, rules)
+  if ctx.mode:match('c') or ctx.cursor.row <= 1 or ctx.cursor.col ~= 0 or ctx.line ~= '' then return end
+
+  local lines = vim.api.nvim_buf_get_lines(ctx.bufnr, ctx.cursor.row - 2, ctx.cursor.row + 1, false)
+  local previous_line = lines[1]
+  local next_line = lines[3]
+  if previous_line == nil or next_line == nil then return end
+
+  local closing_indent = #next_line:match('^%s*')
+  local next_text = next_line:sub(closing_indent + 1)
+
+  for _, rule in ipairs(rules) do
+    if
+      rule_lib.is_active(ctx, rule, 'backspace')
+      and previous_line:sub(-#rule.opening) == rule.opening
+      and next_text:sub(1, #rule.closing) == rule.closing
+      and next_text:sub(#rule.closing + 1):match('^%s*$')
+    then
+      return rule, closing_indent
+    end
+  end
+end
+
 --- @param rules blink.pairs.Rule[]
 function ops.backspace(rules)
   return function()
     if not mappings.is_enabled() then return '<BS>' end
 
     local ctx = require('blink.pairs.context').new()
+    local multiline_rule, closing_indent = ops.get_multiline_surrounding(ctx, rules)
+    if multiline_rule ~= nil then return '<Del>' .. string.rep('<Del>', closing_indent) .. '<BS>' end
     local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'backspace')
     if rule == nil then return '<BS>' end
 
