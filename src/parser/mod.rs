@@ -12,8 +12,8 @@ const FILETYPES: &[&str] = &[
     "bash", "c", "clojure", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fish", "fsharp", "go", "haskell",
     "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json",
     "kotlin", "latex", "tex", "bib", "lean", "lua", "markdown", "nix", "objc", "ocaml", "perl",
-    "php", "python", "r", "ruby", "rust", "scala", "scheme", "sh", "shell", "sql", "swift", "toml", "typst",
-    "vim", "zig", "zsh"
+    "php", "python", "r", "ruby", "rust", "scala", "scheme", "sh", "shell", "sql", "swift", "systemverilog",
+    "toml", "typst", "verilog", "vim", "zig", "zsh"
 ];
 
 pub fn supports_filetype(filetype: &str) -> bool {
@@ -62,6 +62,7 @@ pub fn parse_filetype(
         "bash" | "fish" | "sh" | "zsh" => Some(parse(lines, initial_state, languages::Shell {})),
         "sql" => Some(parse(lines, initial_state, languages::Sql {})),
         "swift" => Some(parse(lines, initial_state, languages::Swift {})),
+        "systemverilog" | "verilog" => Some(parse(lines, initial_state, languages::SystemVerilog {})),
         "toml" => Some(parse(lines, initial_state, languages::Toml {})),
         "typst" => Some(parse(lines, initial_state, languages::Typst {})),
         "vim" => Some(parse(lines, initial_state, languages::Vim {})),
