@@ -9,7 +9,7 @@ use crate::buffer::ParsedBuffer;
 
 #[rustfmt::skip]
 const FILETYPES: &[&str] = &[
-    "bash", "c", "clojure", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fish", "fsharp", "go", "haskell",
+    "bash", "c", "clojure", "cmake", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fish", "fsharp", "go", "haskell",
     "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json",
     "kotlin", "latex", "tex", "bib", "lean", "lua", "markdown", "nix", "objc", "ocaml", "perl",
     "php", "python", "r", "ruby", "rust", "scala", "scheme", "sh", "shell", "sql", "swift", "toml", "typst",
@@ -29,6 +29,7 @@ pub fn parse_filetype(
     match filetype {
         "c" => Some(parse(lines, initial_state, languages::C {})),
         "clojure" => Some(parse(lines, initial_state, languages::Clojure {})),
+        "cmake" => Some(parse(lines, initial_state, languages::CMake {})),
         "cpp" => Some(parse(lines, initial_state, languages::Cpp {})),
         "csharp" => Some(parse(lines, initial_state, languages::CSharp {})),
         "dart" => Some(parse(lines, initial_state, languages::Dart {})),

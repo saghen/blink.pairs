@@ -1,5 +1,6 @@
 mod c;
 mod clojure;
+mod cmake;
 mod cpp;
 mod csharp;
 mod dart;
@@ -39,6 +40,7 @@ mod zig;
 
 pub use c::C;
 pub use clojure::Clojure;
+pub use cmake::CMake;
 pub use cpp::Cpp;
 pub use csharp::CSharp;
 pub use dart::Dart;
