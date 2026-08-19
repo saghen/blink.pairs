@@ -9,11 +9,11 @@ use crate::buffer::ParsedBuffer;
 
 #[rustfmt::skip]
 const FILETYPES: &[&str] = &[
-    "c", "clojure", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fsharp", "go", "haskell",
+    "bash", "c", "clojure", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fish", "fsharp", "go", "haskell",
     "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json",
     "kotlin", "latex", "tex", "bib", "lean", "lua", "markdown", "nix", "objc", "ocaml", "perl",
-    "php", "python", "r", "ruby", "rust", "scala", "scheme", "shell", "sql", "swift", "toml", "typst", "vim",
-    "zig"
+    "php", "python", "r", "ruby", "rust", "scala", "scheme", "sh", "shell", "sql", "swift", "toml", "typst",
+    "vim", "zig"
 ];
 
 pub fn supports_filetype(filetype: &str) -> bool {
@@ -59,7 +59,7 @@ pub fn parse_filetype(
         "rust" => Some(parse(lines, initial_state, languages::Rust {})),
         "scala" => Some(parse(lines, initial_state, languages::Scala {})),
         "scheme" => Some(parse(lines, initial_state, languages::Scheme {})),
-        "shell" => Some(parse(lines, initial_state, languages::Shell {})),
+        "bash" | "fish" | "sh" | "shell" => Some(parse(lines, initial_state, languages::Shell {})),
         "sql" => Some(parse(lines, initial_state, languages::Sql {})),
         "swift" => Some(parse(lines, initial_state, languages::Swift {})),
         "toml" => Some(parse(lines, initial_state, languages::Toml {})),
