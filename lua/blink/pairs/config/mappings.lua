@@ -37,21 +37,24 @@ return {
   cmdline = { true, 'boolean' },
   disabled_filetypes = { {}, 'table' },
 
-  wrap = types.catchall(
+  wrap = {
     {
       -- move closing pair via motion
-      ['<C-b>'] = { 'motion', wrap_enum },
+      ['<C-b>'] = 'motion',
       -- move opening pair via motion
-      ['<C-S-b>'] = { 'motion_reverse', wrap_enum },
+      ['<C-S-b>'] = 'motion_reverse',
       -- treesitter node cycling: move closing pair to next/prev TS node boundary
       -- ['<C-l>'] = 'treesitter',
       -- ['<C-h>'] = 'treesitter_reverse',
 
-      normal_mode = { {}, types.map(types.keycode, types.enum({ 'motion', 'motion_reverse', false })) },
+      normal_mode = {},
     },
-    types.keycode,
-    wrap_enum
-  ),
+    types.table(
+      { normal_mode = types.map(types.keycode, types.enum({ 'motion', 'motion_reverse', false })) },
+      types.keycode,
+      wrap_enum
+    ),
+  },
 
   pairs = {
     {
