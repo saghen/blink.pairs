@@ -85,6 +85,8 @@ return {
             return ctx.ft ~= 'plaintext'
               and ctx.ft ~= 'scheme'
               and ctx.ft ~= 'fennel'
+              and ctx.ft ~= 'verilog'
+              and ctx.ft ~= 'systemverilog'
               and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'"))
               and ctx.ts:blacklist('singlequote').matches
           end,
