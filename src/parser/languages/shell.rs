@@ -8,5 +8,5 @@ define_matcher!(Shell {
         "{" => "}"
     ],
     line_comment: ["#"],
-    string: ["\"", "'"]
+    block_string: ["\"" => "\"", "'" => "'"],
 });
