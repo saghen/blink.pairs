@@ -132,6 +132,24 @@ fn get_unmatched_closing_after(
     }))
 }
 
+fn get_unterminated_opening_before(
+    _lua: &Lua,
+    (bufnr, opening, row, col): (usize, String, usize, usize),
+) -> LuaResult<Option<MatchWithLine>> {
+    Ok(get_parsed_buffers()
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_before(&opening, row, col)))
+}
+
+fn get_unterminated_opening_after(
+    _lua: &Lua,
+    (bufnr, opening, row, col): (usize, String, usize, usize),
+) -> LuaResult<Option<MatchWithLine>> {
+    Ok(get_parsed_buffers()
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_after(&opening, row, col)))
+}
+
 // NOTE: skip_memory_check greatly improves performance
 // https://github.com/mlua-rs/mlua/issues/318
 #[mlua::lua_module(skip_memory_check)]
@@ -157,6 +175,14 @@ fn blink_pairs_parser(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set(
         "get_unmatched_closing_after",
         lua.create_function(get_unmatched_closing_after)?,
+    )?;
+    exports.set(
+        "get_unterminated_opening_before",
+        lua.create_function(get_unterminated_opening_before)?,
+    )?;
+    exports.set(
+        "get_unterminated_opening_after",
+        lua.create_function(get_unterminated_opening_after)?,
     )?;
     Ok(exports)
 }

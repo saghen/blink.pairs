@@ -8,6 +8,8 @@
 --- @field get_surrounding_match_pair fun(bufnr: number, row: number, col: number): blink.pairs.MatchWithLine[]?
 --- @field get_unmatched_opening_before fun(bufnr: number, opening: string, closing: string, row: number, col: number): blink.pairs.MatchWithLine?
 --- @field get_unmatched_closing_after fun(bufnr: number, opening: string, closing: string, row: number, col: number): blink.pairs.MatchWithLine?
+--- @field get_unterminated_opening_before fun(bufnr: number, opening: string, row: number, col: number): blink.pairs.MatchWithLine?
+--- @field get_unterminated_opening_after fun(bufnr: number, opening: string, row: number, col: number): blink.pairs.MatchWithLine?
 
 --- @class blink.pairs.Match
 --- @field [1] string

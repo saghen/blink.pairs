@@ -600,6 +600,78 @@ impl ParsedBuffer {
 
         None
     }
+
+    /// Finds the string, block string or block comment opening that the cursor is inside of,
+    /// if the parser couldn't find a closing for it. Typing the closing should then insert
+    /// only the closing, instead of a new pair.
+    ///
+    /// ```text
+    /// "foo|      -> Some, "foo"|
+    /// "foo|bar"  -> None, "foo"|"bar"
+    /// // foo "|  -> None, inside a line comment
+    /// ```
+    pub fn unterminated_opening_before(
+        &self,
+        opening: &str,
+        line_number: usize,
+        col: usize,
+    ) -> Option<MatchWithLine> {
+        let line_matches = self.matches_by_line.get(line_number)?;
+
+        // Strings reset at the end of the line, so the last non-delimiter match
+        // before the cursor tells us the state
+        let match_before = line_matches.iter().rev().find(|match_| {
+            !matches!(match_.token, Token::Delimiter(_, _)) && match_.col + match_.len() <= col
+        });
+        if let Some(match_) = match_before {
+            return (match_.kind == Kind::Opening
+                && match_.token.opening() == opening
+                && match_.stack_height.is_none())
+            .then(|| match_.with_line(line_number));
+        }
+
+        // Nothing before the cursor on this line, check if we're in a block string/comment
+        // from a previous line
+        let previous_state = line_number
+            .checked_sub(1)
+            .and_then(|line_number| self.state_by_line.get(line_number))?;
+        match previous_state {
+            State::InBlockString(open) | State::InBlockComment(open) if *open == opening => self
+                .iter_to(line_number, 0)
+                .find(|match_| match_.kind == Kind::Opening && match_.token.opening() == opening)
+                .filter(|match_| match_.stack_height.is_none()),
+            _ => None,
+        }
+    }
+
+    /// Finds an unterminated opening after the cursor, for tokens where the opening and closing
+    /// are the same (i.e. `"`). The parser marks it as an opening since it's the first one it
+    /// sees, but typing the opening at the cursor would turn it into the closing.
+    ///
+    /// ```text
+    /// |foo"       -> Some, "|foo"
+    /// |foo"bar"   -> None, "|"foo"bar"
+    /// ```
+    pub fn unterminated_opening_after(
+        &self,
+        opening: &str,
+        line_number: usize,
+        col: usize,
+    ) -> Option<MatchWithLine> {
+        self.matches_by_line
+            .get(line_number)?
+            .iter()
+            .filter(|match_| match_.col >= col && match_.token.opening() == opening)
+            .filter(|match_| {
+                match_
+                    .token
+                    .closing()
+                    .is_none_or(|closing| closing == opening)
+            })
+            .next_back()
+            .filter(|match_| match_.kind == Kind::Opening && match_.stack_height.is_none())
+            .map(|match_| match_.with_line(line_number))
+    }
 }
 
 #[cfg(test)]
@@ -655,6 +727,83 @@ mod tests {
             buffer.unmatched_closing_after("[", "]", 0, 1),
             Some(Match::delimiter(']', 2, None).with_line(0))
         );
+    }
+
+    #[test]
+    fn test_unterminated_opening_before() {
+        // "foo|
+        let buffer = parse("lua", &["\"foo"]);
+        assert_eq!(buffer.unterminated_opening_before("\"", 0, 0), None);
+        assert_eq!(
+            buffer.unterminated_opening_before("\"", 0, 4),
+            Some(Match::new(Kind::Opening, Token::String("\""), 0).with_line(0))
+        );
+        // Different string type
+        assert_eq!(buffer.unterminated_opening_before("'", 0, 4), None);
+        // Strings reset at the end of the line
+        let buffer = parse("lua", &["\"foo", ""]);
+        assert_eq!(buffer.unterminated_opening_before("\"", 1, 0), None);
+
+        // "foo|bar"
+        let buffer = parse("lua", &["\"foo bar\""]);
+        assert_eq!(buffer.unterminated_opening_before("\"", 0, 4), None);
+        assert_eq!(buffer.unterminated_opening_before("\"", 0, 9), None);
+
+        // "foo" ("bar|
+        let buffer = parse("lua", &["\"foo\" (\"bar"]);
+        assert_eq!(buffer.unterminated_opening_before("\"", 0, 6), None);
+        assert_eq!(
+            buffer.unterminated_opening_before("\"", 0, 11),
+            Some(Match::new(Kind::Opening, Token::String("\""), 7).with_line(0))
+        );
+
+        // -- "foo|
+        let buffer = parse("lua", &["-- \"foo"]);
+        assert_eq!(buffer.unterminated_opening_before("\"", 0, 7), None);
+
+        // Block string from a previous line
+        let buffer = parse("lua", &["[[foo", "bar"]);
+        assert_eq!(
+            buffer.unterminated_opening_before("[[", 1, 3),
+            Some(Match::new(Kind::Opening, Token::BlockString("[[", "]]"), 0).with_line(0))
+        );
+        assert_eq!(buffer.unterminated_opening_before("\"", 1, 3), None);
+        let buffer = parse("lua", &["[[foo", "bar", "]]"]);
+        assert_eq!(buffer.unterminated_opening_before("[[", 1, 3), None);
+
+        // Block comment from a previous line
+        let buffer = parse("c", &["/* foo", "bar"]);
+        assert_eq!(
+            buffer.unterminated_opening_before("/*", 1, 3),
+            Some(Match::block_comment("/*", 0).with_line(0))
+        );
+    }
+
+    #[test]
+    fn test_unterminated_opening_after() {
+        // |foo"
+        let buffer = parse("lua", &["foo\""]);
+        assert_eq!(
+            buffer.unterminated_opening_after("\"", 0, 0),
+            Some(Match::new(Kind::Opening, Token::String("\""), 3).with_line(0))
+        );
+        assert_eq!(buffer.unterminated_opening_after("\"", 0, 4), None);
+        assert_eq!(buffer.unterminated_opening_after("'", 0, 0), None);
+
+        // |foo"bar"
+        let buffer = parse("lua", &["foo\"bar\""]);
+        assert_eq!(buffer.unterminated_opening_after("\"", 0, 0), None);
+
+        // |foo"bar"baz"
+        let buffer = parse("lua", &["foo\"bar\"baz\""]);
+        assert_eq!(
+            buffer.unterminated_opening_after("\"", 0, 0),
+            Some(Match::new(Kind::Opening, Token::String("\""), 11).with_line(0))
+        );
+
+        // Only for tokens with the same opening and closing
+        let buffer = parse("lua", &["foo[["]);
+        assert_eq!(buffer.unterminated_opening_after("[[", 0, 0), None);
     }
 
     #[test]

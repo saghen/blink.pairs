@@ -154,6 +154,16 @@ function ops.open_or_close_pair(ctx, key, rule)
   -- |' -> '|
   if ctx:is_after_cursor(pair) then return ops.shift_keycode(#pair) end
 
+  -- 'foo| -> 'foo'|
+  -- |foo' -> '|foo'
+  local row, col = ctx.cursor.row - 1, ctx.cursor.col
+  if
+    ctx.parser.get_unterminated_opening_before(ctx.bufnr, pair, row, col) ~= nil
+    or ctx.parser.get_unterminated_opening_after(ctx.bufnr, pair, row, col) ~= nil
+  then
+    return pair
+  end
+
   -- Multiple character open
   -- '|' -> '''|'''
   if #rule.opening > 1 then
