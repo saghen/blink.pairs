@@ -1,3 +1,38 @@
+## [0.7.0](https://github.com/saghen/blink.pairs/compare/v0.6.0..v0.7.0) - 2026-09-04
+
+### Breaking Changes
+
+- drop `highlights.ns` option ([21c2ac9](https://github.com/saghen/blink.pairs/commit/21c2ac9164b36ae5e22f84a2dd0f02eaf107f8fe))
+
+### Features
+
+- support keys not contained in the pairs they expand to (#120) ([dd57684](https://github.com/saghen/blink.pairs/commit/dd57684daf1297e854e46c85511e7875efb4de75))
+- add sh, zsh, bash, fish parsing (#131) ([de3f8a6](https://github.com/saghen/blink.pairs/commit/de3f8a68fef206f96bfb1d550dafe8e9d076dc49))
+- bring back pairs separated by enter on the same line after backspace (#128) ([9d81008](https://github.com/saghen/blink.pairs/commit/9d81008460981beec983ad570f66f660bc39e398))
+- add `systemverilog` and `verilog` (#130) ([1a4b7c0](https://github.com/saghen/blink.pairs/commit/1a4b7c0a8ae71c18fc1afc8b38213458eb9af9ba))
+- add `cmake` support (#132) ([706683f](https://github.com/saghen/blink.pairs/commit/706683fcd9250aec53e700d0482aeb245dc69a63))
+- support unterminiated non delimiters (#133) ([f889c4c](https://github.com/saghen/blink.pairs/commit/f889c4cbd481dc7c5b1212e228c0502832e89813))
+
+### Bug Fixes
+
+- only use `std::hint::cold_path` if rust is at least >= 1.95.0. (#111) ([bf30af0](https://github.com/saghen/blink.pairs/commit/bf30af06185e4e788af032a83abfa982f60d0985))
+- remove outdated remove_file in build.rs ([667dc9d](https://github.com/saghen/blink.pairs/commit/667dc9dd5a3735883b0204212b9602c626ede3fe))
+- fixed repro.lua (#115) ([d0f0043](https://github.com/saghen/blink.pairs/commit/d0f00431105f773ae50cdc0fa03208448f5f829e))
+- use global namespace for highlight definitions (#122) ([257296f](https://github.com/saghen/blink.pairs/commit/257296f896c25d89b44f48eb2c20bcc32de3d043))
+- add open, close and open_or_close field for config validation (#123) ([4ba1146](https://github.com/saghen/blink.pairs/commit/4ba1146d17a357eb479393e61ded87490dad4f90))
+- verify the trigger key is the right one before expanding a pair (#127) ([2336bdf](https://github.com/saghen/blink.pairs/commit/2336bdf90446cc2d82eb897af3c9f8cbaf4074e9))
+
+### Refactor
+
+- support blink.lib.config api changes (#134) ([b85b422](https://github.com/saghen/blink.pairs/commit/b85b422415e6fe17003a5a8fa35795d4e128290b))
+
+## New Contributors ❤︎
+
+- @evanwporter made their first contribution in [#132](https://github.com/saghen/blink.pairs/pull/132)
+- @antinomie8 made their first contribution in [#128](https://github.com/saghen/blink.pairs/pull/128)
+- @memagu made their first contribution in [#122](https://github.com/saghen/blink.pairs/pull/122)
+- @sergentbne made their first contribution in [#115](https://github.com/saghen/blink.pairs/pull/115)
+
 ## [0.6.0](https://github.com/saghen/blink.pairs/compare/v0.5.0..v0.6.0) - 2026-06-11
 
 ### Breaking Changes
