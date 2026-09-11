@@ -143,9 +143,11 @@ fn get_unmatched_opening_before(
     let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
         return Ok(None);
     };
-    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
-        parsed_buffer.unmatched_opening_before(&opening, &closing, row, col)
-    }))
+    Ok(
+        get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
+            parsed_buffer.unmatched_opening_before(&opening, &closing, row, col)
+        }),
+    )
 }
 
 fn get_unmatched_closing_after(
@@ -155,9 +157,11 @@ fn get_unmatched_closing_after(
     let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
         return Ok(None);
     };
-    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
-        parsed_buffer.unmatched_closing_after(&opening, &closing, row, col)
-    }))
+    Ok(
+        get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
+            parsed_buffer.unmatched_closing_after(&opening, &closing, row, col)
+        }),
+    )
 }
 
 fn get_unterminated_opening_before(

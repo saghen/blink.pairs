@@ -66,9 +66,12 @@ impl ParsedBuffer {
 
         let count = new_end - start;
         self.lines.splice(start..old_end, lines);
-        self.matches_by_line.splice(start..old_end, repeat_n(Vec::new(), count));
-        self.indents_by_line.splice(start..old_end, repeat_n((0, 0), count));
-        self.state_by_line.splice(start..old_end, repeat_n(State::Normal, count));
+        self.matches_by_line
+            .splice(start..old_end, repeat_n(Vec::new(), count));
+        self.indents_by_line
+            .splice(start..old_end, repeat_n((0, 0), count));
+        self.state_by_line
+            .splice(start..old_end, repeat_n(State::Normal, count));
 
         // Tokenize the new lines, continuing past them while the state at the end of the line
         // differs from before the edit (e.g. after opening a block comment)
@@ -825,7 +828,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn parse(filetype: &str, lines: &[&str]) -> ParsedBuffer {
-        ParsedBuffer::parse(filetype, 4, lines.iter().map(|l| l.as_bytes().into()).collect()).unwrap()
+        ParsedBuffer::parse(
+            filetype,
+            4,
+            lines.iter().map(|l| l.as_bytes().into()).collect(),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -1029,7 +1037,11 @@ mod tests {
                         let new_lines: Vec<Box<[u8]>> = (0..rand(4))
                             .map(|_| snippets[rand(snippets.len())].into())
                             .collect();
-                        undo = Some((start, start + new_lines.len(), lines[start..old_end].to_vec()));
+                        undo = Some((
+                            start,
+                            start + new_lines.len(),
+                            lines[start..old_end].to_vec(),
+                        ));
                         (start, old_end, new_lines)
                     }
                 };
@@ -1044,7 +1056,10 @@ mod tests {
 
                 // Everything outside the dirty range must be unchanged
                 for line in (0..lines.len()).filter(|line| !dirty.contains(line)) {
-                    assert_eq!(rendered[line], incremental.matches_by_line[line], "line {line} changed outside of dirty range {dirty:?} (edit {start}..{old_end})");
+                    assert_eq!(
+                        rendered[line], incremental.matches_by_line[line],
+                        "line {line} changed outside of dirty range {dirty:?} (edit {start}..{old_end})"
+                    );
                 }
 
                 assert_eq!(incremental.lines, lines);
@@ -1058,7 +1073,10 @@ mod tests {
                 }
                 assert_eq!(incremental.balanced, full.balanced);
             }
-            assert!(balanced_edits > 200, "{filetype}: only {balanced_edits} edits on a balanced buffer");
+            assert!(
+                balanced_edits > 200,
+                "{filetype}: only {balanced_edits} edits on a balanced buffer"
+            );
         }
     }
 

@@ -42,7 +42,6 @@ impl Match {
         }
     }
 
-
     pub fn with_line(&self, line: usize) -> MatchWithLine {
         MatchWithLine {
             kind: self.kind,
@@ -52,7 +51,6 @@ impl Match {
             stack_height: self.stack_height,
         }
     }
-
 
     #[expect(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {

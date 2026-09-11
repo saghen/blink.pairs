@@ -1,7 +1,7 @@
 use syn::parse::{Parse, ParseStream};
 use syn::token::{Colon, Comma, FatArrow};
-use syn::{braced, bracketed, Result};
 use syn::{Ident, LitStr};
+use syn::{Result, braced, bracketed};
 
 use std::collections::{HashMap, HashSet};
 

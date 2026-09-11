@@ -54,7 +54,10 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   end
 
   if did_parse and require('blink.pairs.config').debug then
-    require('blink.pairs.logger'):notify(vim.log.levels.INFO, 'parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms')
+    require('blink.pairs.logger'):notify(
+      vim.log.levels.INFO,
+      'parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms'
+    )
   end
 
   return did_parse

@@ -35,7 +35,10 @@ pub fn tokenize<'a, M: Matcher + 'a>(
     let mut tokens = Vec::new();
     let mut state = initial_state;
     lines.map(move |line| {
-        let indent = line.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
+        let indent = line
+            .iter()
+            .take_while(|&&b| b == b' ' || b == b'\t')
+            .count();
         let tabs = line[..indent].iter().filter(|&&b| b == b'\t').count();
         let indent = (tabs.min(255) as u8, (indent - tabs).min(255) as u8);
 
@@ -105,13 +108,17 @@ fn cold_path() {
 // TODO: come up with a better way to do testing
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Kind, Match, Token, tokenize_filetype, State};
+    use crate::parser::{Kind, Match, State, Token, tokenize_filetype};
 
     fn parse(filetype: &str, lines: &str) -> Vec<Vec<Match>> {
-        tokenize_filetype(filetype, lines.split('\n').map(str::as_bytes), State::Normal)
-            .unwrap()
-            .map(|(matches, _, _)| matches)
-            .collect()
+        tokenize_filetype(
+            filetype,
+            lines.split('\n').map(str::as_bytes),
+            State::Normal,
+        )
+        .unwrap()
+        .map(|(matches, _, _)| matches)
+        .collect()
     }
 
     #[test]

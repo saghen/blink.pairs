@@ -14,4 +14,3 @@ define_matcher!(Markdown {
         code: "```" => "```"
     },
 });
-
