@@ -135,7 +135,7 @@ return {
         },
       },
       ['$'] = {
-        { '$', languages = { 'markdown', 'markdown_inline', 'typst', 'latex', 'plaintex' } },
+        { '$', languages = { 'markdown', 'markdown_inline', 'quarto', 'rmarkdown', 'rmd', 'typst', 'latex', 'plaintex' } },
       },
     },
 

@@ -10,7 +10,7 @@ pub use parse::{CharPos, State, TokenizedLine, tokenize};
 #[rustfmt::skip]
 const FILETYPES: &[&str] = &[
     "bash", "c", "clojure", "cmake", "cpp", "csharp", "dart", "elixir", "erlang", "fennel", "fish", "fsharp", "go", "haskell",
-    "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json",
+    "haxe", "java", "javascript", "typescript", "typescriptreact", "javascriptreact", "json", "julia",
     "kotlin", "latex", "tex", "bib", "lean", "lua", "markdown", "nix", "objc", "ocaml", "perl",
     "php", "python", "r", "ruby", "rust", "scala", "scheme", "sh", "shell", "sql", "swift", "systemverilog",
     "toml", "typst", "verilog", "vim", "zig", "zsh"
@@ -44,6 +44,7 @@ pub fn tokenize_filetype<'a>(
         "typescript" | "javascript" | "typescriptreact" | "javascriptreact" =>
             Some(Box::new(tokenize(lines, initial_state, languages::JavaScript {}))),
         "json" => Some(Box::new(tokenize(lines, initial_state, languages::Json {}))),
+        "julia" => Some(Box::new(tokenize(lines, initial_state, languages::Julia {}))),
         "kotlin" => Some(Box::new(tokenize(lines, initial_state, languages::Kotlin {}))),
         "latex" | "tex" | "bib" => Some(Box::new(tokenize(lines, initial_state, languages::Latex {}))),
         "lean" => Some(Box::new(tokenize(lines, initial_state, languages::Lean {}))),
