@@ -14,7 +14,9 @@ static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
 
 fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
     // a poisoned lock only means a previous call panicked, the buffers are still usable
-    PARSED_BUFFERS.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    PARSED_BUFFERS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Parses `text`, the lines `start_line..new_end_line` joined by newlines, replacing
@@ -130,8 +132,11 @@ fn get_surrounding_match_pair(
 
 fn get_unmatched_opening_before(
     _lua: &Lua,
-    (bufnr, opening, closing, row, col): (usize, String, String, usize, usize),
+    (bufnr, opening, closing, row, col): (usize, LuaString, LuaString, usize, usize),
 ) -> LuaResult<Option<MatchWithLine>> {
+    let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
+        return Ok(None);
+    };
     Ok(get_parsed_buffers().get(&bufnr).and_then(|parsed_buffer| {
         parsed_buffer.unmatched_opening_before(&opening, &closing, row, col)
     }))
@@ -139,8 +144,11 @@ fn get_unmatched_opening_before(
 
 fn get_unmatched_closing_after(
     _lua: &Lua,
-    (bufnr, opening, closing, row, col): (usize, String, String, usize, usize),
+    (bufnr, opening, closing, row, col): (usize, LuaString, LuaString, usize, usize),
 ) -> LuaResult<Option<MatchWithLine>> {
+    let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
+        return Ok(None);
+    };
     Ok(get_parsed_buffers().get(&bufnr).and_then(|parsed_buffer| {
         parsed_buffer.unmatched_closing_after(&opening, &closing, row, col)
     }))
@@ -148,8 +156,11 @@ fn get_unmatched_closing_after(
 
 fn get_unterminated_opening_before(
     _lua: &Lua,
-    (bufnr, opening, row, col): (usize, String, usize, usize),
+    (bufnr, opening, row, col): (usize, LuaString, usize, usize),
 ) -> LuaResult<Option<MatchWithLine>> {
+    let Ok(opening) = opening.to_str() else {
+        return Ok(None);
+    };
     Ok(get_parsed_buffers()
         .get(&bufnr)
         .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_before(&opening, row, col)))
@@ -157,13 +168,15 @@ fn get_unterminated_opening_before(
 
 fn get_unterminated_opening_after(
     _lua: &Lua,
-    (bufnr, opening, row, col): (usize, String, usize, usize),
+    (bufnr, opening, row, col): (usize, LuaString, usize, usize),
 ) -> LuaResult<Option<MatchWithLine>> {
+    let Ok(opening) = opening.to_str() else {
+        return Ok(None);
+    };
     Ok(get_parsed_buffers()
         .get(&bufnr)
         .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_after(&opening, row, col)))
 }
-
 
 // NOTE: skip_memory_check greatly improves performance
 // https://github.com/mlua-rs/mlua/issues/318
