@@ -44,6 +44,13 @@ impl ParsedBuffer {
     ) -> Option<Range<usize>> {
         let start = start_line.min(self.lines.len());
         let old_end = old_end_line.clamp(start, self.lines.len());
+        // Deleting every line leaves nvim with a single empty line, but it reports zero lines
+        // Create one empty line so we don't desync when new lines are added
+        let lines = if lines.is_empty() && start == 0 && old_end == self.lines.len() {
+            vec![Box::default()]
+        } else {
+            lines
+        };
         let new_end = start + lines.len();
 
         let state_before = |line: usize| match line.checked_sub(1) {
