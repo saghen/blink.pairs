@@ -91,7 +91,7 @@ function watcher.attach(bufnr)
 
     -- Incremental parse
     on_lines = function(_, _, changedtick, start, old_end, new_end)
-      if changedtick == watcher.last_changedticks[bufnr] then return end
+      -- nvim can send several events with the same changedtick, so don't dedupe by tick
       watcher.last_changedticks[bufnr] = changedtick
 
       local did_incremental_parse = parse_buffer(bufnr, start, old_end, new_end)
