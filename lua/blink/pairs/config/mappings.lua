@@ -75,7 +75,7 @@ return {
       },
       ['{'] = '}',
       ["'"] = {
-        { "''", when = function(ctx) return ctx:text_before_cursor(1) == "'" end, languages = { 'nix' } },
+        { "''", "''", languages = { 'nix' } },
         { "'''", when = function(ctx) return ctx:text_before_cursor(2) == "''" end, languages = { 'python', 'toml' } },
         {
           "'",
@@ -90,6 +90,8 @@ return {
               and ctx.ft ~= 'fennel'
               and ctx.ft ~= 'verilog'
               and ctx.ft ~= 'systemverilog'
+              -- nix only has '' strings, handled by the rule above
+              and not ctx.ts:is_language('nix')
               and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'"))
               and ctx.ts:blacklist('singlequote').matches
           end,
