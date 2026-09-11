@@ -2,71 +2,53 @@ local mappings = require('blink.pairs.mappings')
 
 local wrap = {}
 
-local registrations = {
-  motion = function(key, type) wrap.register_motion(key, type) end,
-  motion_reverse = function(key, type) wrap.register_motion(key, type) end,
-  treesitter = function(key) wrap.register_treesitter(key, 'fwd') end,
-  treesitter_reverse = function(key) wrap.register_treesitter(key, 'rev') end,
-  normal_mode_motion = function(key) wrap.register_normal_mode_motion(key, 'motion') end,
-  normal_mode_motion_reverse = function(key) wrap.register_normal_mode_motion(key, 'motion_reverse') end,
-}
+--- Calls the callback for each enabled key in the definitions, with its mode
+--- @param definitions blink.pairs.WrapDefinitions
+--- @param callback fun(mode: 'i' | 'n', key: string, type: blink.pairs.WrapType)
+local function for_each(definitions, callback)
+  for key, type in pairs(definitions) do
+    if key == 'normal_mode' then
+      --- @cast type table<string, blink.pairs.WrapTypeNormal>
+      for normal_key, normal_type in pairs(type) do
+        if normal_type and normal_type ~= '' then callback('n', normal_key, normal_type) end
+      end
+    elseif type and type ~= '' then
+      callback('i', key, type)
+    end
+  end
+end
 
 --- @param definitions blink.pairs.WrapDefinitions
 function wrap.register(definitions)
-  for key, def in pairs(definitions) do
-    if key == 'normal_mode' then
-      --- @cast def table<string, blink.pairs.WrapTypeNormal>
-      for normal_mode_key, normal_mode_def in pairs(def) do
-        if normal_mode_def ~= nil and normal_mode_def ~= false and normal_mode_def ~= '' then
-          local type = normal_mode_def == 'motion' and 'normal_mode_motion'
-            or normal_mode_def == 'motion_reverse' and 'normal_mode_motion_reverse'
-            or error('unknown type for normal mode wrap: ' .. normal_mode_def)
-          registrations[type](normal_mode_key)
-        end
-      end
-    elseif def ~= nil and def ~= false and def ~= '' then
-      registrations[def](key, def)
+  for_each(definitions, function(mode, key, type)
+    if type == 'motion' or type == 'motion_reverse' then
+      wrap.register_motion(mode, key, type)
+    elseif (type == 'treesitter' or type == 'treesitter_reverse') and mode == 'i' then
+      wrap.register_treesitter(key, type == 'treesitter' and 'fwd' or 'rev')
+    else
+      error('unknown type for wrap: ' .. tostring(type))
     end
-  end
+  end)
 end
 
 --- @param definitions blink.pairs.WrapDefinitions
 function wrap.unregister(definitions)
-  for key, def in pairs(definitions) do
-    if key == 'normal_mode' then
-      --- @cast def table<string, blink.pairs.WrapTypeNormal>
-      for normal_mode_key, _ in pairs(def) do
-        vim.keymap.del('n', normal_mode_key)
-      end
-    else
-      vim.keymap.del('i', key)
-    end
-  end
+  for_each(definitions, function(mode, key) vim.keymap.del(mode, key) end)
 end
 
+--- @param mode 'i' | 'n'
 --- @param key string
---- @param type blink.pairs.WrapType
-function wrap.register_motion(key, type)
-  vim.keymap.set('i', key, function()
+--- @param type 'motion' | 'motion_reverse'
+function wrap.register_motion(mode, key, type)
+  vim.keymap.set(mode, key, function()
     if not mappings.is_enabled() then return key end
-    local motion = require('blink.pairs.mappings.wrap.motion')
-    motion.set_operator_wrap(type)
-    return '<C-\\><C-o>g@'
+    require('blink.pairs.mappings.wrap.motion').set_operator_wrap(type)
+    -- <C-\><C-o> runs the operator from insert mode without moving the cursor at the end of the line
+    return mode == 'i' and '<C-\\><C-o>g@' or 'g@'
   end, {
     expr = true,
     desc = 'Wrap ' .. (type == 'motion_reverse' and 'opening' or 'closing') .. ' pair via motion',
   })
-end
-
---- @param key string
---- @param type blink.pairs.WrapType
-function wrap.register_normal_mode_motion(key, type)
-  vim.keymap.set('n', key, function()
-    if not mappings.is_enabled() then return key end
-    local motion = require('blink.pairs.mappings.wrap.motion')
-    motion.set_operator_wrap(type)
-    return 'g@'
-  end, { expr = true, desc = 'Wrap pair at cursor via motion' })
 end
 
 --- @param key string

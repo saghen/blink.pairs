@@ -1,15 +1,13 @@
 local nvim = require('blink.lib.nvim')
-local mappings = require('blink.pairs.mappings')
 local rust = require('blink.pairs.rust')
 
 --- @class blink.pairs.TsWrapState
 --- @field bufnr integer
---- @field original_close_row integer
---- @field original_close_col integer
---- @field close_char string
---- @field targets { end_row: integer, end_col: integer }[]
---- @field target_idx integer
 --- @field changedtick integer
+--- @field text string Closing delimiter
+--- @field row integer
+--- @field cols integer[] Columns the closing delimiter cycles through, first is the original column
+--- @field idx integer Index into `cols` of the current column
 
 local treesitter = {
   --- @type blink.pairs.TsWrapState?
@@ -19,128 +17,59 @@ local treesitter = {
 --- TS node cycling: move closing pair to next/prev treesitter node boundary
 --- @param direction 'fwd' | 'rev'
 function treesitter.wrap(direction)
-  if not mappings.is_enabled() then return end
-
   local bufnr = nvim.get_current_buf()
   local changedtick = nvim.buf_get_changedtick(bufnr)
 
-  -- Fast path: continue cycling without Rust parser or treesitter lookups
-  if treesitter.state and treesitter.state.bufnr == bufnr and treesitter.state.changedtick == changedtick then
-    return treesitter.wrap_move(direction, treesitter.state)
+  -- Continue cycling unless the buffer changed since the last move
+  local state = treesitter.state
+  if not state or state.bufnr ~= bufnr or state.changedtick ~= changedtick then
+    state = treesitter.new_state(bufnr)
+    if not state then return end
   end
 
-  -- Slow path: initialize new cycle
-  local cursor = nvim.win_get_cursor(0)
-  local row = cursor[1] - 1
-  local col = cursor[2]
+  local idx = state.idx + (direction == 'fwd' and 1 or -1)
+  if idx < 1 or idx > #state.cols then return end
+  local from, to = state.cols[state.idx], state.cols[idx]
 
-  local pair = rust.get_surrounding_match_pair(bufnr, row, col, true)
-  if not pair or #pair < 2 then return end
+  nvim.buf_set_text(bufnr, state.row, from, state.row, from + #state.text, {})
+  nvim.buf_set_text(bufnr, state.row, to, state.row, to, { state.text })
+  nvim.win_set_cursor(0, { state.row + 1, to })
 
-  local close_match = pair[2]
-  local close_char = close_match[2] or close_match[1]
-  local close_end = close_match.col + #close_char
-
-  local nodes = treesitter.get_wrap_nodes(bufnr, row, col)
-  if not nodes then return end
-
-  local targets = {}
-  local tn = 0
-  for i = 1, #nodes do
-    local node = nodes[i]
-    if node.end_row == close_match.line and node.end_col > close_end then
-      tn = tn + 1
-      targets[tn] = node
-    end
-  end
-
-  if tn == 0 then return end
-
-  treesitter.state = {
-    bufnr = bufnr,
-    original_close_row = close_match.line,
-    original_close_col = close_match.col,
-    close_char = close_char,
-    targets = targets,
-    target_idx = 0,
-    changedtick = changedtick,
-  }
-
-  treesitter.wrap_move(direction, treesitter.state)
+  state.idx = idx
+  state.changedtick = nvim.buf_get_changedtick(bufnr)
+  treesitter.state = state
 end
 
---- Get TS nodes from position upward, deduped and sorted by end position
---- @return { end_row: integer, end_col: integer }[]?
-function treesitter.get_wrap_nodes(bufnr, row, col)
-  local ok, node = pcall(vim.treesitter.get_node, { bufnr = bufnr, pos = { row, col } })
-  if not ok or not node then return nil end
+--- Finds the pair surrounding the cursor and the treesitter nodes ending after it on the same line
+--- @param bufnr integer
+--- @return blink.pairs.TsWrapState?
+function treesitter.new_state(bufnr)
+  local cursor = nvim.win_get_cursor(0)
+  local row, col = cursor[1] - 1, cursor[2]
 
-  local nodes = {}
-  local n = 0
-  local seen = {}
+  local pair = rust.get_surrounding_match_pair(bufnr, row, col, true)
+  if not pair then return end
+  local close = pair[2]
+  local text = close[2] or close[1]
+  if close.line ~= row then return end
+
+  local ok, node = pcall(vim.treesitter.get_node, { bufnr = bufnr, pos = { row, col } })
+  if not ok then return end
+
+  -- node ends after the closing delimiter, in the columns of the line without it
+  local cols, seen = { close.col }, {}
   while node do
-    local _, _, er, ec = node:range()
-    local key = er * 1000000 + ec
-    if not seen[key] then
-      seen[key] = true
-      n = n + 1
-      nodes[n] = { end_row = er, end_col = ec }
+    local _, _, end_row, end_col = node:range()
+    if end_row == row and end_col > close.col + #text and not seen[end_col] then
+      seen[end_col] = true
+      table.insert(cols, end_col - #text)
     end
     node = node:parent()
   end
+  if #cols == 1 then return end
+  table.sort(cols)
 
-  table.sort(nodes, function(a, b)
-    if a.end_row ~= b.end_row then return a.end_row < b.end_row end
-    return a.end_col < b.end_col
-  end)
-
-  return nodes
-end
-
---- @param direction 'fwd' | 'rev'
---- @param ts_state blink.pairs.TsWrapState
-function treesitter.wrap_move(direction, ts_state)
-  local new_idx
-  if direction == 'fwd' then
-    new_idx = ts_state.target_idx + 1
-    if new_idx > #ts_state.targets then return end
-  else
-    new_idx = ts_state.target_idx - 1
-    if new_idx < 0 then return end
-  end
-
-  local cur_row, cur_col
-  if ts_state.target_idx == 0 then
-    cur_row = ts_state.original_close_row
-    cur_col = ts_state.original_close_col
-  else
-    local t = ts_state.targets[ts_state.target_idx]
-    cur_row = t.end_row
-    cur_col = t.end_col - #ts_state.close_char
-  end
-
-  local tgt_row, tgt_col
-  if new_idx == 0 then
-    tgt_row = ts_state.original_close_row
-    tgt_col = ts_state.original_close_col
-  else
-    local t = ts_state.targets[new_idx]
-    tgt_row = t.end_row
-    tgt_col = t.end_col
-  end
-
-  local bufnr = ts_state.bufnr
-  local cc = ts_state.close_char
-
-  nvim.buf_set_text(bufnr, cur_row, cur_col, cur_row, cur_col + #cc, { '' })
-
-  if tgt_row == cur_row and tgt_col > cur_col then tgt_col = tgt_col - #cc end
-
-  nvim.buf_set_text(bufnr, tgt_row, tgt_col, tgt_row, tgt_col, { cc })
-  nvim.win_set_cursor(0, { tgt_row + 1, tgt_col })
-
-  ts_state.target_idx = new_idx
-  ts_state.changedtick = nvim.buf_get_changedtick(bufnr)
+  return { bufnr = bufnr, changedtick = nvim.buf_get_changedtick(bufnr), row = row, text = text, cols = cols, idx = 1 }
 end
 
 return treesitter
