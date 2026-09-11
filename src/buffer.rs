@@ -19,6 +19,9 @@ pub struct ParsedBuffer {
     /// Whether every delimiter is matched, in which case stack heights can be updated
     /// incrementally
     balanced: bool,
+    /// Whether an edit deferred the stack height calculation, see `ensure_stack_heights`
+    stale_heights: bool,
+    tab_width: u8,
 }
 
 impl ParsedBuffer {
@@ -29,6 +32,7 @@ impl ParsedBuffer {
     pub fn parse(filetype: &str, tab_width: u8, lines: Vec<Box<[u8]>>) -> Option<Self> {
         let mut parsed = Self::default();
         parsed.reparse_range(filetype, tab_width, lines, 0, 0)?;
+        parsed.ensure_stack_heights();
         Some(parsed)
     }
 
@@ -94,20 +98,21 @@ impl ParsedBuffer {
             return Some(dirty);
         }
 
-        // Compare against the previous heights to find the lines that need re-rendering
-        let old_heights: Vec<_> = (self.matches_by_line.iter().flatten())
-            .map(|m| m.stack_height)
-            .collect();
-        self.calculate_stack_heights(tab_width);
-        let mut old_heights = old_heights.iter();
-        let mut changed = self.matches_by_line.iter().enumerate().filter_map(|(line, matches)| {
-            let old = old_heights.by_ref().take(matches.len());
-            let changed = matches.iter().zip(old).filter(|(m, h)| m.stack_height != **h);
-            (changed.count() > 0).then_some(line)
-        });
-        let first = changed.next();
-        let last = changed.last().or(first);
-        Some(first.map_or(start, |l| l.min(start))..last.map_or(end, |l| (l + 1).max(end)))
+        // An unbalanced buffer needs the full stack height pass, which is deferred until the next
+        // query so that a burst of edits (e.g. undoing a `:substitute` sends one event per line)
+        // only pays for it once. Any line's height may change, so report them all
+        self.balanced = false;
+        self.stale_heights = true;
+        self.tab_width = tab_width;
+        Some(0..self.lines.len())
+    }
+
+    /// Runs the stack height calculation deferred by `reparse_range`
+    pub fn ensure_stack_heights(&mut self) {
+        if self.stale_heights {
+            self.stale_heights = false;
+            self.calculate_stack_heights(self.tab_width);
+        }
     }
 
     /// Fast path for balanced buffers: replays the stack from the nearest checkpoint before the
@@ -1030,6 +1035,7 @@ mod tests {
                 let dirty = incremental
                     .reparse_range(filetype, 4, new_lines, start, old_end)
                     .unwrap();
+                incremental.ensure_stack_heights();
                 let full = ParsedBuffer::parse(filetype, 4, lines.clone()).unwrap();
 
                 // Everything outside the dirty range must be unchanged

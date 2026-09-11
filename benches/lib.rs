@@ -47,7 +47,9 @@ fn criterion_benches(c: &mut Criterion) {
         c.bench_function(&format!("{name}/parse/insert_unmatched_{{"), |b| {
             b.iter(|| {
                 parsed.reparse_range(name, 4, vec![b"{".to_vec().into()], mid, mid);
-                parsed.reparse_range(name, 4, vec![], mid, mid + 1)
+                parsed.ensure_stack_heights();
+                parsed.reparse_range(name, 4, vec![], mid, mid + 1);
+                parsed.ensure_stack_heights()
             })
         });
 

@@ -19,6 +19,16 @@ fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+/// The parsed buffer, with the stack heights an edit may have deferred brought up to date
+fn get_parsed_buffer(
+    parsed_buffers: &mut HashMap<usize, ParsedBuffer>,
+    bufnr: usize,
+) -> Option<&mut ParsedBuffer> {
+    let parsed_buffer = parsed_buffers.get_mut(&bufnr)?;
+    parsed_buffer.ensure_stack_heights();
+    Some(parsed_buffer)
+}
+
 /// Parses `text`, the lines `start_line..new_end_line` joined by newlines, replacing
 /// `start_line..old_end_line`. Parses the whole buffer when the range is omitted. Returns whether
 /// the filetype is supported and the range of lines whose matches may have changed.
@@ -78,14 +88,13 @@ fn get_line_matches(
     _lua: &Lua,
     (bufnr, line_number, token_type): (usize, usize, Option<u8>),
 ) -> LuaResult<Vec<Match>> {
-    let parsed_buffers = get_parsed_buffers();
+    let mut parsed_buffers = get_parsed_buffers();
     let token_type = token_type
         // TODO: don't ignore the error
         .and_then(|token_type| token_type.try_into().ok())
         .unwrap_or(TokenType::Delimiter);
 
-    Ok(parsed_buffers
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut parsed_buffers, bufnr)
         .and_then(|parsed_buffer| parsed_buffer.matches_by_line.get(line_number))
         .map_or(Vec::new(), |matches| {
             matches
@@ -97,14 +106,12 @@ fn get_line_matches(
 }
 
 fn get_span_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<String>> {
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.span_at(row, col)))
 }
 
 fn get_match_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<Match>> {
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.match_at(row, col)))
 }
 
@@ -112,8 +119,7 @@ fn get_match_pair(
     _lua: &Lua,
     (bufnr, row, col): (usize, usize, usize),
 ) -> LuaResult<Option<Vec<MatchWithLine>>> {
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.match_pair(row, col))
         .map(|(open, close)| vec![open, close]))
 }
@@ -122,8 +128,7 @@ fn get_surrounding_match_pair(
     _lua: &Lua,
     (bufnr, row, col, between): (usize, usize, usize, Option<bool>),
 ) -> LuaResult<Option<Vec<MatchWithLine>>> {
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| {
             parsed_buffer.surrounding_match_pair(row, col, between.unwrap_or(false))
         })
@@ -137,7 +142,7 @@ fn get_unmatched_opening_before(
     let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
         return Ok(None);
     };
-    Ok(get_parsed_buffers().get(&bufnr).and_then(|parsed_buffer| {
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
         parsed_buffer.unmatched_opening_before(&opening, &closing, row, col)
     }))
 }
@@ -149,7 +154,7 @@ fn get_unmatched_closing_after(
     let (Ok(opening), Ok(closing)) = (opening.to_str(), closing.to_str()) else {
         return Ok(None);
     };
-    Ok(get_parsed_buffers().get(&bufnr).and_then(|parsed_buffer| {
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr).and_then(|parsed_buffer| {
         parsed_buffer.unmatched_closing_after(&opening, &closing, row, col)
     }))
 }
@@ -161,8 +166,7 @@ fn get_unterminated_opening_before(
     let Ok(opening) = opening.to_str() else {
         return Ok(None);
     };
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_before(&opening, row, col)))
 }
 
@@ -173,8 +177,7 @@ fn get_unterminated_opening_after(
     let Ok(opening) = opening.to_str() else {
         return Ok(None);
     };
-    Ok(get_parsed_buffers()
-        .get(&bufnr)
+    Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_after(&opening, row, col)))
 }
 
