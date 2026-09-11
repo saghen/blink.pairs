@@ -45,7 +45,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 | `(\|)`         | `<Space>` | `( \| )`       |
 | `Vec\|`        | `<`       | `Vec<\|>`      |
 | `a \|`         | `<`       | `a <\|`        |
-| `foo(\|)'bar'` | `<C-b>aq` | `foo('bar'\|)` |
+| `foo(\|)'bar'` | `<C-b>a'` | `foo('bar'\|)` |
 
 ## Installation
 
