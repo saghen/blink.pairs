@@ -51,7 +51,7 @@ function wrap.register_motion(key, type)
     if not mappings.is_enabled() then return key end
     local motion = require('blink.pairs.mappings.wrap.motion')
     motion.set_operator_wrap(type)
-    return '<C-o>g@'
+    return '<C-\\><C-o>g@'
   end, {
     expr = true,
     desc = 'Wrap ' .. (type == 'motion_reverse' and 'opening' or 'closing') .. ' pair via motion',

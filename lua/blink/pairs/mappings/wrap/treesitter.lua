@@ -34,7 +34,7 @@ function treesitter.wrap(direction)
   local row = cursor[1] - 1
   local col = cursor[2]
 
-  local pair = rust.get_surrounding_match_pair(bufnr, row, col)
+  local pair = rust.get_surrounding_match_pair(bufnr, row, col, true)
   if not pair or #pair < 2 then return end
 
   local close_match = pair[2]

@@ -532,13 +532,18 @@ impl ParsedBuffer {
         }
     }
 
+    /// Innermost pair surrounding the position, including a delimiter at the position itself.
+    /// With `between`, the position is treated as being between characters (as with the cursor in
+    /// insert mode), so a closing delimiter starting at `col` surrounds it but an opening one does not.
     pub fn surrounding_match_pair(
         &self,
         line_number: usize,
         col: usize,
+        between: bool,
     ) -> Option<(MatchWithLine, MatchWithLine)> {
         let match_before = self
             .match_at(line_number, col)
+            .filter(|match_| !between || (match_.kind == Kind::Closing && match_.col == col))
             .map(|m| m.with_line(line_number))
             // Find match before cursor, where the ending comes after the cursor
             .or_else(|| {

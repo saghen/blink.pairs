@@ -118,11 +118,13 @@ fn get_match_pair(
 
 fn get_surrounding_match_pair(
     _lua: &Lua,
-    (bufnr, row, col): (usize, usize, usize),
+    (bufnr, row, col, between): (usize, usize, usize, Option<bool>),
 ) -> LuaResult<Option<Vec<MatchWithLine>>> {
     Ok(get_parsed_buffers()
         .get(&bufnr)
-        .and_then(|parsed_buffer| parsed_buffer.surrounding_match_pair(row, col))
+        .and_then(|parsed_buffer| {
+            parsed_buffer.surrounding_match_pair(row, col, between.unwrap_or(false))
+        })
         .map(|(open, close)| vec![open, close]))
 }
 

@@ -1,85 +1,88 @@
 local nvim = require('blink.lib.nvim')
 local rust = require('blink.pairs.rust')
 
+local OPERATOR_FUNC = 'v:lua.blink_pairs_wrap'
+
 local motions = {}
 
---- @type [integer, integer]
-local cursor
 --- @type blink.pairs.WrapType?
 local wrap_type
---- @type 'forward' | 'backward' | nil
-local direction
+--- Cursor when the operator was started, before the motion: { row (1-indexed), col (0-indexed), between }
+--- where `between` is true when the cursor was between characters (insert mode)
+--- @type { [1]: integer, [2]: integer, between: boolean }?
+local cursor
 
---- @param pos [integer, integer]
---- @param col_offset? integer
---- @return blink.pairs.MatchWithLine[]?
-function motions.get_pair_at(pos, col_offset)
-  local bufnr = nvim.get_current_buf()
-  return rust.get_surrounding_match_pair(bufnr, pos[1] - 1, math.max(pos[2] + (col_offset or 0), 0))
-end
-
---- Perform setup for the wrap operator, getting the cursor position, storing options
---- and clearing state for dot-repeat
+--- Perform setup for the wrap operator, storing the wrap type used by the operator
 --- @param type blink.pairs.WrapType
 function motions.set_operator_wrap(type)
-  cursor = nvim.win_get_cursor(0)
-  cursor[2] = math.max(0, cursor[2] - 1)
   wrap_type = type
-  direction = nil
-
-  vim.o.operatorfunc = 'v:lua.blink_pairs_wrap'
+  vim.go.operatorfunc = OPERATOR_FUNC
 end
 
--- Must be a _G global because vim's operatorfunc requires v:lua.<name>
--- Forward wrap operator: moves pair character at start_pos to motion end
-_G.blink_pairs_wrap = function()
-  -- called without calling `motions.set_operator_wrap` first
-  if not wrap_type or not cursor then return end
+-- The operator receives the region of the motion, but not where the cursor was before it, which we
+-- need to determine the surrounding pair and the direction of the motion. We grab it when entering
+-- operator-pending mode, which also works for dot-repeat where the mapping isn't invoked
+nvim.create_autocmd('ModeChanged', {
+  group = nvim.create_augroup('blink.pairs.wrap.motion', {}),
+  pattern = '*:no*',
+  callback = function(ev)
+    if vim.go.operatorfunc ~= OPERATOR_FUNC then return end
+    cursor = nvim.win_get_cursor(0)
+    cursor.between = ev.match:sub(1, 3) == 'niI'
+  end,
+})
 
-  local motion_start_pos = nvim.buf_get_mark(0, '[') -- start of operated region
-  local motion_end_pos = nvim.buf_get_mark(0, ']') -- end of operated region
-  if motion_start_pos[1] == 0 or motion_end_pos[1] == 0 then return end -- not set, didn't complete motion
+--- Must be a _G global because vim's operatorfunc requires v:lua.<name>
+--- Moves the opening (motion_reverse) or closing (motion) delimiter of the pair surrounding the
+--- cursor to the end (forward motion) or start (backward motion) of the operated region
+--- @param mode 'char' | 'line' | 'block'
+_G.blink_pairs_wrap = function(mode)
+  local start_cursor = cursor
+  cursor = nil
+  if not wrap_type or not start_cursor or mode == 'block' then return end
 
-  -- if we're running for the first time, we must be in insert mode, and not in normal mode doing dot-repeat
-  -- if we're at `(|'')`, we want to select the `(`, not the `'`, so we offset backwards by 1
-  local pair_col_offset = direction == nil and wrap_type == 'motion_reverse' and -1 or 0
+  local bufnr = nvim.get_current_buf()
+  local pair = rust.get_surrounding_match_pair(bufnr, start_cursor[1] - 1, start_cursor[2], start_cursor.between)
+  if not pair then return end
+  local open, close = pair[1], pair[2]
+  local is_open = wrap_type == 'motion_reverse'
+  local match = is_open and open or close
+  local text = is_open and match[1] or (match[2] or match[1])
 
-  -- when running the operator for the first time, the global `cursor` variable will let us figure out if
-  -- the direction is forward or backward
-  -- on dot-repeat, we then use the stored `direction` variable
-  if not direction then
-    direction = cursor[1] == motion_end_pos[1] and cursor[2] == motion_end_pos[2] and 'backward' or 'forward'
+  -- region operated on, 0-indexed rows
+  local region_start = nvim.buf_get_mark(0, '[')
+  local region_end = nvim.buf_get_mark(0, ']')
+  region_start[1] = region_start[1] - 1
+  region_end[1] = region_end[1] - 1
+
+  -- backward motions (e.g. `b`, `0`, `k`) move the delimiter to the start of the region, forward
+  -- motions (e.g. `e`, `$`, `j`) and text objects (e.g. `aq`) to the end
+  local backward = mode == 'line' and region_start[1] < start_cursor[1] - 1
+    or mode == 'char'
+      and (region_start[1] < start_cursor[1] - 1 or region_start[1] == start_cursor[1] - 1 and region_start[2] < start_cursor[2])
+  local target
+  if backward then
+    target = { region_start[1], mode == 'line' and 0 or region_start[2] }
+  else
+    local line = nvim.buf_get_lines(0, region_end[1], region_end[1] + 1, true)[1]
+    local col = mode == 'line' and #line or math.min(region_end[2], #line)
+    -- move past the (potentially multi-byte) character at the end of the region
+    if col < #line then col = col + vim.str_utf_end(line, col + 1) + 1 end
+    target = { region_end[1], col }
   end
-  local new_pair_pos = direction == 'backward' and motion_start_pos or { motion_end_pos[1], motion_end_pos[2] + 1 }
-  new_pair_pos[1] = new_pair_pos[1] - 1 -- convert to 0-indexed
 
-  local pair = motions.get_pair_at(
-    direction == 'backward' and { motion_end_pos[1], motion_end_pos[2] + 1 } or motion_start_pos,
-    pair_col_offset
-  )
-  if not pair or #pair ~= 2 then return end
-  pair = wrap_type == 'motion_reverse' and pair[1] or pair[2]
-  local pair_pos = { pair.line, pair.col }
+  -- never move the delimiter past its counterpart, which would invert the pair
+  local before = function(a, b) return a[1] < b[1] or a[1] == b[1] and a[2] < b[2] end
+  if is_open and before({ close.line, close.col }, target) then return end
+  if not is_open and not before({ open.line, open.col + #open[1] }, { target[1], target[2] + 1 }) then return end
 
-  -- clamp to end of line
-  local line_len = #nvim.buf_get_lines(0, new_pair_pos[1], new_pair_pos[1] + 1, true)[1]
-  new_pair_pos[2] = math.min(line_len, new_pair_pos[2])
+  -- remove the delimiter, then insert it at the target, adjusting for the removal on the same line
+  nvim.buf_set_text(bufnr, match.line, match.col, match.line, match.col + #text, {})
+  if target[1] == match.line and target[2] > match.col then target[2] = target[2] - #text end
+  nvim.buf_set_text(bufnr, target[1], target[2], target[1], target[2], { text })
 
-  -- get pair and set it to the new position
-  local paren = nvim.buf_get_text(0, pair_pos[1], pair_pos[2], pair_pos[1], pair_pos[2] + 1, {})[1]
-  nvim.buf_set_text(0, new_pair_pos[1], new_pair_pos[2], new_pair_pos[1], new_pair_pos[2], { paren })
-
-  -- move cursor to the pair
-  nvim.win_set_cursor(0, { new_pair_pos[1] + 1, new_pair_pos[2] + (wrap_type == 'motion_reverse' and 1 or 0) })
-
-  -- clear pair at the original position
-  if pair_pos[1] == new_pair_pos[1] and pair_pos[2] > new_pair_pos[2] then
-    -- compensate for the new position being 1 character to the right of the original position
-    -- since we inserted the character at the new position
-    pair_pos[2] = pair_pos[2] + 1
-    new_pair_pos[2] = new_pair_pos[2] + 1
-  end
-  nvim.buf_set_text(0, pair_pos[1], pair_pos[2], pair_pos[1], pair_pos[2] + 1, {})
+  -- place the cursor inside the pair, next to the moved delimiter
+  nvim.win_set_cursor(0, { target[1] + 1, target[2] + (is_open and #text or 0) })
 end
 
 return motions
