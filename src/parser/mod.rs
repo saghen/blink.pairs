@@ -3,7 +3,8 @@ pub mod matcher;
 pub mod parse;
 
 pub use matcher::{
-    Kind, Match, MatchWithLine, Matcher, Token, is_angle_bracket_closing, is_angle_bracket_opening,
+    Kind, Match, MatchWithLine, Matcher, Token, TokenTypes, is_angle_bracket_closing,
+    is_angle_bracket_opening,
 };
 pub use parse::{CharPos, State, TokenizedLine, tokenize};
 

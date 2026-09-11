@@ -79,7 +79,8 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
         ['<C-S-b>'] = 'motion_reverse',
         -- set to 'treesitter' or 'treesitter_reverse' to use treesitter instead of motions
         -- set to nil, '' or false to disable the mapping
-        -- normal_mode = {} <- for normal mode mappings, only supports 'motion' and 'motion_reverse'
+        -- for normal mode mappings, only supports 'motion' and 'motion_reverse'
+        -- normal_mode = {}
       },
       -- see the defaults:
       -- https://github.com/Saghen/blink.pairs/blob/main/lua/blink/pairs/config/mappings.lua#L52
@@ -95,10 +96,13 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 
       -- highlights matching pairs under the cursor
       matchparen = {
+        -- optionally only for the given token types, e.g. 'delimiter'
         enabled = true,
         -- known issue where typing won't update matchparen highlight, disabled by default
         cmdline = false,
         -- also include pairs not on top of the cursor, but surrounding the cursor
+        -- optionally only for the given token types, which must be a subset of `enabled`,
+        -- if defined
         include_surrounding = false,
         group = 'BlinkPairsMatchParen',
         priority = 250,

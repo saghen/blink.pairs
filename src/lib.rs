@@ -1,5 +1,5 @@
 use mlua::prelude::*;
-use parser::matcher::TokenType;
+use parser::matcher::{TokenType, TokenTypes};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -117,20 +117,21 @@ fn get_match_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResu
 
 fn get_match_pair(
     _lua: &Lua,
-    (bufnr, row, col): (usize, usize, usize),
+    (bufnr, row, col, token_types): (usize, usize, usize, TokenTypes),
 ) -> LuaResult<Option<Vec<MatchWithLine>>> {
     Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| parsed_buffer.match_pair(row, col))
+        .filter(|(open, _)| token_types.contains(open.token))
         .map(|(open, close)| vec![open, close]))
 }
 
 fn get_surrounding_match_pair(
     _lua: &Lua,
-    (bufnr, row, col, between): (usize, usize, usize, Option<bool>),
+    (bufnr, row, col, between, token_types): (usize, usize, usize, Option<bool>, TokenTypes),
 ) -> LuaResult<Option<Vec<MatchWithLine>>> {
     Ok(get_parsed_buffer(&mut get_parsed_buffers(), bufnr)
         .and_then(|parsed_buffer| {
-            parsed_buffer.surrounding_match_pair(row, col, between.unwrap_or(false))
+            parsed_buffer.surrounding_match_pair(row, col, between.unwrap_or(false), token_types)
         })
         .map(|(open, close)| vec![open, close]))
 }

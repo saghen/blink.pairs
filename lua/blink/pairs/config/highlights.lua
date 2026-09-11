@@ -7,13 +7,15 @@
 --- @field matchparen blink.pairs.MatchparenConfig
 
 --- @class (exact) blink.pairs.MatchparenConfig
---- @field enabled boolean
+--- @field enabled boolean | blink.pairs.TokenType | blink.pairs.TokenType[] Optionally only for the given token types (e.g. `'delimiter'` to ignore strings and comments)
 --- @field cmdline boolean Requires `require('vim._extui').enable({})`. Disabled by default due to only showing matchparen when moving the cursor, and not when typing.
---- @field include_surrounding boolean Also include pairs not on top of the cursor, but surrounding the cursor
+--- @field include_surrounding boolean | blink.pairs.TokenType | blink.pairs.TokenType[] Also include pairs not on top of the cursor, but surrounding the cursor, optionally only for the given token types which must be a subset of `enabled`
 --- @field group string Highlight group for the matching pair
 --- @field priority number Priority of the highlight
 
 local types = require('blink.lib.config').types
+local token_types =
+  types.enum({ 'delimiter', 'string', 'block_string', 'line_comment', 'block_comment', 'inline_span', 'block_span' })
 return {
   enabled = { true, 'boolean' },
   cmdline = { true, 'boolean' },
@@ -21,9 +23,9 @@ return {
   unmatched_group = { 'BlinkPairsUnmatched', 'string' },
   priority = { 200, 'number' },
   matchparen = {
-    enabled = { true, 'boolean' },
+    enabled = { true, { 'boolean', token_types, types.list(token_types) } },
     cmdline = { false, 'boolean' },
-    include_surrounding = { false, 'boolean' },
+    include_surrounding = { false, { 'boolean', token_types, types.list(token_types) } },
     group = { 'MatchParen', 'string' },
     priority = { 250, 'number' },
   },

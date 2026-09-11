@@ -5,12 +5,14 @@
 --- @field get_line_matches fun(bufnr: number, line_number: number, token_type: number?): blink.pairs.Match[]
 --- @field get_span_at fun(bufnr: number, row: number, col: number): string?
 --- @field get_match_at fun(bufnr: number, row: number, col: number): blink.pairs.Match?
---- @field get_match_pair fun(bufnr: number, row: number, col: number): blink.pairs.MatchWithLine[]?
---- @field get_surrounding_match_pair fun(bufnr: number, row: number, col: number, between?: boolean): blink.pairs.MatchWithLine[]? Innermost pair surrounding the position, including a delimiter at the position. With `between`, the position is treated as being between characters (insert mode cursor), so a closing delimiter at `col` surrounds it but an opening one does not
+--- @field get_match_pair fun(bufnr: number, row: number, col: number, token_types?: blink.pairs.TokenType | blink.pairs.TokenType[]): blink.pairs.MatchWithLine[]? Pair of the delimiter at the position, only of the `token_types` (default all)
+--- @field get_surrounding_match_pair fun(bufnr: number, row: number, col: number, between?: boolean, token_types?: blink.pairs.TokenType | blink.pairs.TokenType[], surrounding_token_types?: blink.pairs.TokenType | blink.pairs.TokenType[]): blink.pairs.MatchWithLine[]? Innermost pair surrounding the position, including a delimiter at the position. With `between`, the position is treated as being between characters (insert mode cursor), so a closing delimiter at `col` surrounds it but an opening one does not. Only pairs of the `token_types` (default all) are considered
 --- @field get_unmatched_opening_before fun(bufnr: number, opening: string, closing: string, row: number, col: number): blink.pairs.MatchWithLine?
 --- @field get_unmatched_closing_after fun(bufnr: number, opening: string, closing: string, row: number, col: number): blink.pairs.MatchWithLine?
 --- @field get_unterminated_opening_before fun(bufnr: number, opening: string, row: number, col: number): blink.pairs.MatchWithLine?
 --- @field get_unterminated_opening_after fun(bufnr: number, opening: string, row: number, col: number): blink.pairs.MatchWithLine?
+
+--- @alias blink.pairs.TokenType 'delimiter' | 'string' | 'block_string' | 'line_comment' | 'block_comment' | 'inline_span' | 'block_span'
 
 --- @class blink.pairs.Match
 --- @field [1] string

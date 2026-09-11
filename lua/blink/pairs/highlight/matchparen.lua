@@ -10,6 +10,11 @@ function M.setup(config)
   local mappings_config = require('blink.pairs.config').mappings
   local ns = nvim.create_namespace('blink_pairs_matchparen')
   local last_buf
+  local enabled, include_surrounding = config.matchparen.enabled, config.matchparen.include_surrounding
+  -- `true` enables every token type
+  local token_types = enabled ~= true and enabled or nil
+  -- `true` includes the same token types as `enabled`
+  local surrounding_token_types = include_surrounding ~= true and include_surrounding or token_types
 
   --- @type vim.api.keyset.events[]
   local autocmds = { 'CursorMoved', 'CursorMovedI' }
@@ -42,9 +47,10 @@ function M.setup(config)
       local cursor = { ctx.cursor.row, ctx.cursor.col + prompt_len }
       local buf = ctx.bufnr
       -- TODO: returns nil in cmdline mode due to the autocmd running before the watcher
-      local get_pair_func = config.matchparen.include_surrounding and rust.get_surrounding_match_pair
-        or rust.get_match_pair
-      local pair = get_pair_func(buf, cursor[1] - 1, cursor[2])
+      local pair = rust.get_match_pair(buf, cursor[1] - 1, cursor[2], token_types)
+      if pair == nil and include_surrounding then
+        pair = rust.get_surrounding_match_pair(buf, cursor[1] - 1, cursor[2], nil, surrounding_token_types)
+      end
 
       -- Clear extmarks
       if last_buf and nvim.buf_is_valid(last_buf) then nvim.buf_clear_namespace(last_buf, ns, 0, -1) end

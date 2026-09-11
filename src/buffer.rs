@@ -1,5 +1,5 @@
 use crate::parser::{
-    Kind, Match, MatchWithLine, State, Token, supports_filetype, tokenize_filetype,
+    Kind, Match, MatchWithLine, State, Token, TokenTypes, supports_filetype, tokenize_filetype,
 };
 use std::iter::repeat_n;
 use std::ops::Range;
@@ -547,20 +547,24 @@ impl ParsedBuffer {
     /// Innermost pair surrounding the position, including a delimiter at the position itself.
     /// With `between`, the position is treated as being between characters (as with the cursor in
     /// insert mode), so a closing delimiter starting at `col` surrounds it but an opening one does not.
+    /// Only pairs of the given `token_types` are considered.
     pub fn surrounding_match_pair(
         &self,
         line_number: usize,
         col: usize,
         between: bool,
+        token_types: TokenTypes,
     ) -> Option<(MatchWithLine, MatchWithLine)> {
         let match_before = self
             .match_at(line_number, col)
+            .filter(|match_| token_types.contains(match_.token))
             .filter(|match_| !between || (match_.kind == Kind::Closing && match_.col == col))
             .map(|m| m.with_line(line_number))
             // Find match before cursor, where the ending comes after the cursor
             .or_else(|| {
                 self.iter_to(line_number, col).find(|match_before| {
                     match_before.kind == Kind::Opening
+                        && token_types.contains(match_before.token)
                         && self
                             .match_pair(match_before.line, match_before.col)
                             .map(|(_, match_after)| {
