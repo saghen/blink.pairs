@@ -29,7 +29,9 @@ pub struct Match {
     pub kind: Kind,
     pub token: &'static Token,
     pub col: usize,
-    pub stack_height: Option<usize>,
+    pub depth: Option<u16>,
+    /// Counts depth specific for this pair, ignoring the depth contributed by other pairs
+    pub pair_depth: u16,
 }
 
 impl Match {
@@ -38,7 +40,8 @@ impl Match {
             kind,
             token,
             col,
-            stack_height: None,
+            depth: None,
+            pair_depth: 0,
         }
     }
 
@@ -48,7 +51,8 @@ impl Match {
             token: self.token,
             line,
             col: self.col,
-            stack_height: self.stack_height,
+            depth: self.depth,
+            pair_depth: self.pair_depth,
         }
     }
 
@@ -67,7 +71,7 @@ impl Match {
 
 #[cfg(test)]
 impl Match {
-    pub fn delimiter(char: char, col: usize, stack_height: Option<usize>) -> Self {
+    pub fn delimiter(char: char, col: usize, depth: Option<u16>) -> Self {
         let (kind, token) = match char {
             '{' => (Kind::Opening, &Token::Delimiter("{", "}")),
             '}' => (Kind::Closing, &Token::Delimiter("{", "}")),
@@ -84,7 +88,9 @@ impl Match {
             kind,
             token,
             col,
-            stack_height,
+            depth,
+            // the tests nest a single token, so the pair depths match the depths
+            pair_depth: depth.unwrap_or(0),
         }
     }
 
@@ -98,7 +104,8 @@ impl Match {
             kind,
             token,
             col,
-            stack_height: None,
+            depth: None,
+            pair_depth: 0,
         }
     }
 }
@@ -119,7 +126,8 @@ impl IntoLua for Match {
         }
 
         table.set("col", self.col)?;
-        table.set("stack_height", self.stack_height)?;
+        table.set("depth", self.depth)?;
+        table.set("pair_depth", self.depth.map(|_| self.pair_depth))?;
 
         (&table).into_lua(lua)
     }
@@ -131,7 +139,8 @@ pub struct MatchWithLine {
     pub token: &'static Token,
     pub line: usize,
     pub col: usize,
-    pub stack_height: Option<usize>,
+    pub depth: Option<u16>,
+    pub pair_depth: u16,
 }
 
 impl IntoLua for MatchWithLine {
@@ -151,7 +160,8 @@ impl IntoLua for MatchWithLine {
 
         table.set("line", self.line)?;
         table.set("col", self.col)?;
-        table.set("stack_height", self.stack_height)?;
+        table.set("depth", self.depth)?;
+        table.set("pair_depth", self.depth.map(|_| self.pair_depth))?;
 
         (&table).into_lua(lua)
     }

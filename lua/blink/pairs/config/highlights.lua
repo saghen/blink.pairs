@@ -2,6 +2,7 @@
 --- @field enabled boolean
 --- @field cmdline boolean Requires `require('vim._extui').enable({})`
 --- @field groups string[] | fun(match: blink.pairs.Match): string Highlight groups for matched pairs, in order that they'll appear based on depth, or a function that returns a highlight group for a given match
+--- @field separate boolean | string | string[] Pairs (by opening) whose nesting depth is counted separately from the rest, or `true` for every pair
 --- @field unmatched_group string Highlight group for unmatched pairs
 --- @field priority number
 --- @field matchparen blink.pairs.MatchparenConfig
@@ -19,7 +20,8 @@ local token_types =
 return {
   enabled = { true, 'boolean' },
   cmdline = { true, 'boolean' },
-  groups = { { 'BlinkPairsOrange', 'BlinkPairsPurple', 'BlinkPairsBlue' }, types.list('string') },
+  groups = { { 'BlinkPairsOrange', 'BlinkPairsPurple', 'BlinkPairsBlue' }, { types.list('string'), 'function' } },
+  separate = { { '<' }, { 'boolean', 'string', types.list('string') } },
   unmatched_group = { 'BlinkPairsUnmatched', 'string' },
   priority = { 200, 'number' },
   matchparen = {

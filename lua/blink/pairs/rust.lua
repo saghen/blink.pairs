@@ -1,5 +1,5 @@
 --- @class blink.pairs.Parser
---- @field parse_buffer fun(bufnr: number, tab_width: number, filetype: string, text: string, start_line: number?, old_end_line: number?, new_end_line: number?): boolean, number, number
+--- @field parse_buffer fun(bufnr: number, tab_width: number, filetype: string, text: string, start_line: number?, old_end_line: number?, new_end_line: number?, separate: boolean | string | string[] | nil): boolean, number, number Pairs whose nesting depth is counted separately (see `highlights.separate`), used on the initial parse
 --- @field remove_buffer fun(bufnr: number)
 --- @field supports_filetype fun(filetype: string): boolean
 --- @field get_line_matches fun(bufnr: number, line_number: number, token_type: number?): blink.pairs.Match[]
@@ -19,7 +19,8 @@
 --- @field [2] string?
 --- @field span string?
 --- @field col number
---- @field stack_height number?
+--- @field depth number?
+--- @field pair_depth number? Nesting depth counting only pairs it nests with, see `highlights.separate`
 
 --- @class blink.pairs.MatchWithLine : blink.pairs.Match
 --- @field line number

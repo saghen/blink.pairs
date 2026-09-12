@@ -32,7 +32,7 @@ function highlighter.register(config)
   --- @type fun(match: blink.pairs.Match): string
   --- @diagnostic disable-next-line: assign-type-mismatch
   local get_match_highlight = type(config.groups) == 'function' and config.groups
-    or function(match) return config.groups[match.stack_height % #config.groups + 1] end
+    or function(match) return config.groups[match.pair_depth % #config.groups + 1] end
 
   local watcher = require('blink.pairs.watcher')
   local get_line_matches = require('blink.pairs.rust').get_line_matches
@@ -84,7 +84,7 @@ function highlighter.register(config)
         local match = matches[i]
         nvim.buf_set_extmark(bufnr, ns, line_number, match.col, {
           end_col = match.col + match[1]:len(),
-          hl_group = match.stack_height == nil and config.unmatched_group or get_match_highlight(match),
+          hl_group = match.depth == nil and config.unmatched_group or get_match_highlight(match),
           hl_mode = 'combine',
           priority = config.priority,
         })

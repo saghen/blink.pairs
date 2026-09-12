@@ -3,7 +3,7 @@ use parser::matcher::{TokenType, TokenTypes};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use buffer::ParsedBuffer;
+use buffer::{ParsedBuffer, Separate};
 use parser::{Match, MatchWithLine};
 
 pub mod buffer;
@@ -19,22 +19,23 @@ fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-/// The parsed buffer, with the stack heights an edit may have deferred brought up to date
+/// The parsed buffer, with the depths an edit may have deferred brought up to date
 fn get_parsed_buffer(
     parsed_buffers: &mut HashMap<usize, ParsedBuffer>,
     bufnr: usize,
 ) -> Option<&mut ParsedBuffer> {
     let parsed_buffer = parsed_buffers.get_mut(&bufnr)?;
-    parsed_buffer.ensure_stack_heights();
+    parsed_buffer.ensure_depths();
     Some(parsed_buffer)
 }
 
 /// Parses `text`, the lines `start_line..new_end_line` joined by newlines, replacing
 /// `start_line..old_end_line`. Parses the whole buffer when the range is omitted. Returns whether
 /// the filetype is supported and the range of lines whose matches may have changed.
+#[expect(clippy::type_complexity)]
 fn parse_buffer(
     _lua: &Lua,
-    (bufnr, tab_width, filetype, text, start_line, old_end_line, new_end_line): (
+    (bufnr, tab_width, filetype, text, start_line, old_end_line, new_end_line, separate): (
         usize,
         u8,
         String,
@@ -42,6 +43,7 @@ fn parse_buffer(
         Option<usize>,
         Option<usize>,
         Option<usize>,
+        Separate,
     ),
 ) -> LuaResult<(bool, usize, usize)> {
     let mut lines: Vec<Box<[u8]>> = text
@@ -63,7 +65,7 @@ fn parse_buffer(
             start_line,
             old_end_line.unwrap_or(usize::MAX),
         ),
-        _ => ParsedBuffer::parse(&filetype, tab_width, lines).map(|parsed_buffer| {
+        _ => ParsedBuffer::parse(&filetype, tab_width, lines, separate).map(|parsed_buffer| {
             let dirty = 0..parsed_buffer.lines.len();
             parsed_buffers.insert(bufnr, parsed_buffer);
             dirty

@@ -92,6 +92,8 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
       cmdline = true,
       -- set to { 'BlinkPairs' } to disable rainbow highlighting
       groups = { 'BlinkPairsOrange', 'BlinkPairsPurple', 'BlinkPairsBlue' },
+      -- pairs whose nesting is counted separately from the rest, or `true` for every pair
+      separate = { '<' },
       unmatched_group = 'BlinkPairsUnmatched',
 
       -- highlights matching pairs under the cursor

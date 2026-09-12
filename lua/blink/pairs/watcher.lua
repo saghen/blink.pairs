@@ -41,8 +41,9 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
     end
   end
 
+  local tab_width, separate = utils.get_tab_width(bufnr), require('blink.pairs.config').highlights.separate
   local ok, filetype_supported, dirty_start, dirty_end =
-    pcall(rust.parse_buffer, bufnr, utils.get_tab_width(bufnr), ft, text, start_line, old_end_line, new_end_line)
+    pcall(rust.parse_buffer, bufnr, tab_width, ft, text, start_line, old_end_line, new_end_line, separate)
   local did_parse = ok and filetype_supported
 
   if did_parse then

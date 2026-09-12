@@ -1,4 +1,4 @@
-use blink_pairs_parser::buffer::ParsedBuffer;
+use blink_pairs_parser::buffer::{ParsedBuffer, Separate};
 use blink_pairs_parser::parser::{State, tokenize_filetype};
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
@@ -28,15 +28,17 @@ fn criterion_benches(c: &mut Criterion) {
             })
         });
 
+        // the default config
+        let separate = Separate::Openings(vec!["<".into()]);
         c.bench_function(&format!("{name}/parse/full"), |b| {
             b.iter_batched(
                 lines,
-                |lines| ParsedBuffer::parse(name, 4, lines),
+                |lines| ParsedBuffer::parse(name, 4, lines, separate.clone()),
                 BatchSize::LargeInput,
             )
         });
 
-        let mut parsed = ParsedBuffer::parse(name, 4, lines()).unwrap();
+        let mut parsed = ParsedBuffer::parse(name, 4, lines(), separate.clone()).unwrap();
         c.bench_function(&format!("{name}/parse/incremental_mid"), |b| {
             b.iter(|| {
                 let line = parsed.lines[mid].clone();
@@ -47,9 +49,9 @@ fn criterion_benches(c: &mut Criterion) {
         c.bench_function(&format!("{name}/parse/insert_unmatched_{{"), |b| {
             b.iter(|| {
                 parsed.reparse_range(name, 4, vec![b"{".to_vec().into()], mid, mid);
-                parsed.ensure_stack_heights();
+                parsed.ensure_depths();
                 parsed.reparse_range(name, 4, vec![], mid, mid + 1);
-                parsed.ensure_stack_heights()
+                parsed.ensure_depths()
             })
         });
 
