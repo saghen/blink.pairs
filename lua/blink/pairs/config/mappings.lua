@@ -2,6 +2,8 @@
 --- @field enabled boolean
 --- @field cmdline boolean
 --- @field disabled_filetypes string[]
+--- @field backspace { overjumps: boolean }
+--- @field fly { enabled: boolean }
 --- @field wrap blink.pairs.WrapDefinitions
 --- @field pairs blink.pairs.RuleDefinitions
 
@@ -31,11 +33,39 @@ local types = require('blink.lib.config').types
 
 local wrap_enum = types.enum({ 'motion', 'motion_reverse', 'treesitter', 'treesitter_reverse', false })
 
+local python_string_prefixes = {
+  f = true,
+  r = true,
+  b = true,
+  u = true,
+  fr = true,
+  rf = true,
+  br = true,
+  rb = true,
+  -- Python 3.14 template strings.
+  t = true,
+  tr = true,
+  rt = true,
+}
+local function after_python_string_prefix(ctx)
+  if not ctx.ts:is_language('python') then return false end
+  local prefix = ctx:text_before_cursor():match('([%w_\128-\255]+)$')
+  return prefix ~= nil and python_string_prefixes[prefix:lower()] == true
+end
+
 -- stylua: ignore
 return {
   enabled = { true, 'boolean' },
   cmdline = { true, 'boolean' },
   disabled_filetypes = { {}, 'table' },
+  backspace = {
+    -- Delete a matched pair around non-empty content when just after its opening.
+    overjumps = { false, 'boolean' },
+  },
+  fly = {
+    -- Skip matched brackets and horizontal whitespace to reach the closing bracket.
+    enabled = { false, 'boolean' },
+  },
 
   wrap = {
     {
@@ -76,7 +106,11 @@ return {
       ['{'] = '}',
       ["'"] = {
         { "''", "''", languages = { 'nix' } },
-        { "'''", when = function(ctx) return ctx:text_before_cursor(2) == "''" end, languages = { 'python', 'toml' } },
+        {
+          "'''", "'''",
+          when = function(ctx) return ctx:text_before_cursor(2) == "''" or ctx:is_after_cursor("'''") end,
+          languages = { 'python', 'toml' },
+        },
         {
           "'",
           enter = false,
@@ -92,7 +126,7 @@ return {
               and ctx.ft ~= 'systemverilog'
               -- nix only has '' strings, handled by the rule above
               and not ctx.ts:is_language('nix')
-              and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'"))
+              and (not ctx.char_under_cursor:match('%w') or ctx:is_after_cursor("'") or after_python_string_prefix(ctx))
               and ctx.ts:blacklist('singlequote').matches
           end,
         },
@@ -100,8 +134,8 @@ return {
       ['"'] = {
         { 'r#"', '"#', languages = { 'rust' }, priority = 100 },
         {
-          '"""',
-          when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
+          '"""', '"""',
+          when = function(ctx) return ctx:text_before_cursor(2) == '""' or ctx:is_after_cursor('"""') end,
           languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'toml' },
         },
         { '"', enter = false, space = false },

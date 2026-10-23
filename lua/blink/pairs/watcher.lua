@@ -18,9 +18,6 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   local start_time = vim.uv.hrtime()
   local rust = require('blink.pairs.rust')
 
-  -- join the lines to avoid the overhead of passing a table of strings to rust
-  local text = table.concat(vim.api.nvim_buf_get_lines(bufnr, start_line or 0, new_end_line or -1, false), '\n')
-
   -- TODO: use 'lua' filetype for cmd buffers with := and :lua
   local ft = vim.bo[bufnr].filetype
   -- map cmdline's 'cmd' filetype to 'vim'
@@ -40,6 +37,12 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
       end
     end
   end
+
+  if not rust.supports_filetype(ft) then return false end
+
+  -- Resolve filetype support before reading the buffer. Unsupported buffers are
+  -- retried during redraws, so copying their contents would repeatedly scan large files.
+  local text = table.concat(vim.api.nvim_buf_get_lines(bufnr, start_line or 0, new_end_line or -1, false), '\n')
 
   local tab_width, separate = utils.get_tab_width(bufnr), require('blink.pairs.config').highlights.separate
   local ok, filetype_supported, dirty_start, dirty_end =
